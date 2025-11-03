@@ -51,6 +51,7 @@ class _ProfilePageState extends State<ProfilePage> {
       await prefs.setString('profile_image', _profileImage!.path);
     }
 
+    if (!mounted) return;
     setState(() {
       isEditing = false;
     });
@@ -126,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       width: 120,
                       height: 120,
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
+                        color: const Color.fromRGBO(0, 0, 0, 0.4),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
