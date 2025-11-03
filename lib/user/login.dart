@@ -98,7 +98,7 @@ class _LoginPageState extends State<LoginPage> {
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -119,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -157,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
                       onPressed: _validateLogin,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                         backgroundColor: highContrastButtonColor,
                         elevation: 15,
