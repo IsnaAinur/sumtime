@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'user/login.dart';
-
+import 'beranda.dart';
 
 void main() {
   runApp(const SumTimeApp());
@@ -19,11 +18,9 @@ class SumTimeApp extends StatelessWidget {
         primarySwatch: Colors.orange,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const LoginPage(),
+      home: const BerandaPage(),
       routes: {
-
-
-
+        '/beranda': (context) => const BerandaPage(),
       },
     );
   }
