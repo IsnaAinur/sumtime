@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'login.dart';
-import 'beranda.dart';
+import 'payment.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SumTimeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SumTimeApp extends StatelessWidget {
+  const SumTimeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,11 +16,10 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      // Atur route ke login dan beranda
+
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginPage(),
-        '/home': (context) => const BerandaPage(),
+        '/': (context) => const PaymentPage(),
       },
     );
   }
