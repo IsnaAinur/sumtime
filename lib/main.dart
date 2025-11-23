@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
+import 'register.dart';
 import 'beranda.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SumTimeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SumTimeApp extends StatelessWidget {
+  const SumTimeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +22,7 @@ class MyApp extends StatelessWidget {
       initialRoute: '/',
       routes: {
         '/': (context) => const LoginPage(),
+        '/register': (context) => const RegisterPage(),
         '/home': (context) => const BerandaPage(),
       },
     );
