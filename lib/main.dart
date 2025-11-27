@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-
-import 'user/login.dart';
+import 'profile.dart';
 
 
 void main() {
@@ -19,7 +18,7 @@ class SumTimeApp extends StatelessWidget {
         primarySwatch: Colors.orange,
         scaffoldBackgroundColor: Colors.white,
       ),
-      home: const LoginPage(),
+      home: const ProfilePage(),
       routes: {
 
 
