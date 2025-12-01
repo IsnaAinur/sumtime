@@ -13,6 +13,7 @@ class _BerandaPageState extends State<BerandaPage> {
   String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
   bool _isSearching = false;
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
+  final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
 
   // Sample data for products
   final List<Map<String, dynamic>> _allProducts = [
@@ -223,7 +224,8 @@ class _BerandaPageState extends State<BerandaPage> {
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
@@ -234,6 +236,7 @@ class _BerandaPageState extends State<BerandaPage> {
                           return _buildProductCard(_filteredProducts[index]);
                         },
                       ),
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -243,27 +246,37 @@ class _BerandaPageState extends State<BerandaPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        selectedItemColor: const Color(0xFFDD0303),
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Keranjang',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_cart.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: _buildCheckoutBar(),
+            ),
+          BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            selectedItemColor: const Color(0xFFDD0303),
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Beranda',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_cart),
+                label: 'Keranjang',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profil',
+              ),
+            ],
           ),
         ],
       ),
@@ -412,9 +425,7 @@ class _BerandaPageState extends State<BerandaPage> {
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: () {
-                        // Add to cart functionality
-                      },
+                      onPressed: () => _addToCart(product),
                     ),
                   ),
                 ),
@@ -422,6 +433,49 @@ class _BerandaPageState extends State<BerandaPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCheckoutBar() {
+    final int itemCount = _cart.length;
+
+    return GestureDetector(
+      onTap: _showCheckout,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDD0303),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.shopping_bag,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Checkout $itemCount menu',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -469,5 +523,122 @@ class _BerandaPageState extends State<BerandaPage> {
     }
 
     _filteredProducts = products.toList();
+  }
+
+  void _addToCart(Map<String, dynamic> product) {
+    setState(() {
+      _cart.add(product);
+    });
+  }
+
+  void _showCheckout() {
+    if (_cart.isEmpty) return;
+
+    // Kelompokkan item berdasarkan nama untuk menampilkan qty
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final product in _cart) {
+      final String name = (product['name'] ?? 'Menu').toString();
+      if (!grouped.containsKey(name)) {
+        grouped[name] = {
+          'product': product,
+          'qty': 1,
+        };
+      } else {
+        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final entries = grouped.entries.toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Info Pesanan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final product = entry.value['product'] as Map<String, dynamic>;
+                    final int qty = entry.value['qty'] as int;
+                    final String price =
+                        (product['price'] ?? '-').toString();
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      trailing: Text(
+                        'x$qty',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDD0303),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Checkout',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
