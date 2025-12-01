@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'checkout.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -534,111 +535,10 @@ class _BerandaPageState extends State<BerandaPage> {
   void _showCheckout() {
     if (_cart.isEmpty) return;
 
-    // Kelompokkan item berdasarkan nama untuk menampilkan qty
-    final Map<String, Map<String, dynamic>> grouped = {};
-    for (final product in _cart) {
-      final String name = (product['name'] ?? 'Menu').toString();
-      if (!grouped.containsKey(name)) {
-        grouped[name] = {
-          'product': product,
-          'qty': 1,
-        };
-      } else {
-        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
-      }
-    }
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(cart: _cart),
       ),
-      builder: (context) {
-        final entries = grouped.entries.toList();
-
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Info Pesanan',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: entries.length,
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    final product = entry.value['product'] as Map<String, dynamic>;
-                    final int qty = entry.value['qty'] as int;
-                    final String price =
-                        (product['price'] ?? '-').toString();
-
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        entry.key,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        price,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      trailing: Text(
-                        'x$qty',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDD0303),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Checkout',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
