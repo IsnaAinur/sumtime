@@ -535,10 +535,132 @@ class _BerandaPageState extends State<BerandaPage> {
   void _showCheckout() {
     if (_cart.isEmpty) return;
 
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => CheckoutPage(cart: _cart),
+    // Snapshot isi cart saat ini supaya tidak berubah ketika user melihat bottom sheet
+    final List<Map<String, dynamic>> currentCart =
+        List<Map<String, dynamic>>.from(_cart);
+
+    // Kelompokkan item berdasarkan nama agar muncul "x1", "x2", dst seperti desain
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final product in currentCart) {
+      final String name = (product['name'] ?? 'Menu').toString();
+      if (!grouped.containsKey(name)) {
+        grouped[name] = {
+          'product': product,
+          'qty': 1,
+        };
+      } else {
+        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
+      }
+    }
+    final entries = grouped.entries.toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: false,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Info Pesanan',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Daftar item pesanan
+                Flexible(
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: entries.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final entry = entries[index];
+                      final product =
+                          entry.value['product'] as Map<String, dynamic>;
+                      final int qty = entry.value['qty'] as int;
+
+                      return Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                entry.key,
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                (product['price'] ?? '-').toString(),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Text(
+                            'x$qty',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFDD0303),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    onPressed: () {
+                      // Tutup bottom sheet dulu
+                      Navigator.of(bottomSheetContext).pop();
+                      // Lanjut ke halaman Checkout
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (context) => CheckoutPage(cart: currentCart),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Checkout',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
