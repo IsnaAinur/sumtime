@@ -10,30 +10,53 @@ class BerandaPage extends StatefulWidget {
 class _BerandaPageState extends State<BerandaPage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
+  bool _isSearching = false;
+  String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
 
   // Sample data for products
-  final List<Map<String, dynamic>> _products = [
+  final List<Map<String, dynamic>> _allProducts = [
     {
       'name': 'Dimsum Ayam',
       'price': 'Rp 25.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
     },
     {
       'name': 'Dimsum Udang',
       'price': 'Rp 28.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
+    },
+    {
+      'name': 'Dimsum Ayam',
+      'price': 'Rp 25.000',
+      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
+    },
+    {
+      'name': 'Dimsum Udang',
+      'price': 'Rp 28.000',
+      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
     },
     {
       'name': 'Es Jeruk',
       'price': 'Rp 15.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
     },
     {
       'name': 'Es Teh',
       'price': 'Rp 12.000',
-      'image': 'assets/dimsum1.jpg',
-    },
+      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',  
+   },
+
   ];
+
+  // List produk yang akan ditampilkan (hasil filter)
+  late List<Map<String, dynamic>> _filteredProducts;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+  }
 
   @override
   void dispose() {
@@ -59,12 +82,12 @@ class _BerandaPageState extends State<BerandaPage> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
+                          color: const Color(0xFFDD0303),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
                           Icons.restaurant_menu,
-                          color: Colors.orange,
+                          color: Color(0xFFDD0303),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -73,7 +96,7 @@ class _BerandaPageState extends State<BerandaPage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: Color(0xFFDD0303),
                         ),
                       ),
                     ],
@@ -87,14 +110,22 @@ class _BerandaPageState extends State<BerandaPage> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Cari menu',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
+                    onChanged: _onSearchChanged,
+                    decoration: const InputDecoration(
+                      hintText: 'Cari menu',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
                         ),
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Color(0xFFDD0303),
+                        ),
+                        suffixIcon: Icon(
+                          Icons.search,
+                          color: Color(0xFFDD0303),
+                        ),
                       ),
                     ),
                   ),
@@ -110,52 +141,83 @@ class _BerandaPageState extends State<BerandaPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Poster Section
-                      Container(
-                        width: double.infinity,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.orange.shade200,
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Poster',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange.shade700,
+                      if (!_isSearching) ...[
+                        // Poster Section
+                        Container(
+                          width: double.infinity,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 255, 255, 255),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFDD0303),
+                              width: 2,
                             ),
                           ),
+                          child: _posterUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    _posterUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    'Poster',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFDD0303),
+                                    ),
+                                  ),
+                                ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Kategori Section
-                      const Text(
-                        'Kategori',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(height: 24),
+                        
+                        // Kategori Section
+                        const Text(
+                          'Kategori',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCategoryButton('Dimsum', Icons.restaurant),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCategoryButton('Minuman', Icons.local_drink),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCategoryButton(
+                                'Dimsum',
+                                Icons.restaurant,
+                                isSelected: _selectedCategory == 'Dimsum',
+                                onTap: () => _onCategorySelected('Dimsum'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildCategoryButton(
+                                'Minuman',
+                                Icons.local_drink,
+                                isSelected: _selectedCategory == 'Minuman',
+                                onTap: () => _onCategorySelected('Minuman'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                       
                       // Product Grid
                       GridView.builder(
@@ -167,9 +229,9 @@ class _BerandaPageState extends State<BerandaPage> {
                           mainAxisSpacing: 12,
                           childAspectRatio: 0.75,
                         ),
-                        itemCount: _products.length,
+                        itemCount: _filteredProducts.length,
                         itemBuilder: (context, index) {
-                          return _buildProductCard(_products[index]);
+                          return _buildProductCard(_filteredProducts[index]);
                         },
                       ),
                       const SizedBox(height: 16),
@@ -188,7 +250,7 @@ class _BerandaPageState extends State<BerandaPage> {
             _currentIndex = index;
           });
         },
-        selectedItemColor: Colors.orange,
+        selectedItemColor: const Color(0xFFDD0303),
         unselectedItemColor: Colors.grey,
         items: const [
           BottomNavigationBarItem(
@@ -208,16 +270,21 @@ class _BerandaPageState extends State<BerandaPage> {
     );
   }
 
-  Widget _buildCategoryButton(String label, IconData icon) {
+  Widget _buildCategoryButton(
+    String label,
+    IconData icon, {
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orange.shade50,
-        foregroundColor: Colors.orange.shade700,
+        backgroundColor: isSelected ? const Color(0xFFDD0303) : Colors.white,
+        foregroundColor: isSelected ? Colors.white : const Color(0xFFDD0303),
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.orange.shade300),
+          side: const BorderSide(color: Color(0xFFDD0303)),
         ),
       ),
       child: Row(
@@ -254,7 +321,7 @@ class _BerandaPageState extends State<BerandaPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image Placeholder
+          // Product Image
           Expanded(
             child: Container(
               width: double.infinity,
@@ -265,10 +332,41 @@ class _BerandaPageState extends State<BerandaPage> {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: const Icon(
-                Icons.image,
-                size: 40,
-                color: Colors.grey,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+                child: product['image'] != null && product['image'].toString().startsWith('http')
+                    ? Image.network(
+                        product['image'],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.image,
+                            size: 40,
+                            color: Colors.grey,
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                      )
+                    : const Icon(
+                        Icons.image,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
               ),
             ),
           ),
@@ -304,7 +402,7 @@ class _BerandaPageState extends State<BerandaPage> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.orange,
+                      color: const Color(0xFFDD0303),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: IconButton(
@@ -326,5 +424,50 @@ class _BerandaPageState extends State<BerandaPage> {
         ],
       ),
     );
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _isSearching = query.isNotEmpty;
+      _applyFilters();
+    });
+  }
+
+  void _onCategorySelected(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.trim().toLowerCase();
+
+    // Mulai dari semua produk
+    Iterable<Map<String, dynamic>> products = _allProducts;
+
+    // Filter berdasarkan kategori
+    if (_selectedCategory == 'Dimsum') {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        return name.contains('dimsum');
+      });
+    } else if (_selectedCategory == 'Minuman') {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        // Di data sekarang, minuman adalah yang diawali "Es"
+        return name.startsWith('es ');
+      });
+    }
+
+    // Filter berdasarkan pencarian
+    if (query.isNotEmpty) {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      });
+    }
+
+    _filteredProducts = products.toList();
   }
 }
