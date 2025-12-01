@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-
-import 'user/login.dart';
-
+import 'login.dart';
+import 'beranda.dart';
 
 void main() {
-  runApp(const SumTimeApp());
+  runApp(const MyApp());
 }
 
-class SumTimeApp extends StatelessWidget {
-  const SumTimeApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,13 +16,12 @@ class SumTimeApp extends StatelessWidget {
       title: 'SumTime',
       theme: ThemeData(
         primarySwatch: Colors.orange,
-        scaffoldBackgroundColor: Colors.white,
       ),
-      home: const LoginPage(),
+      // Atur route ke login dan beranda
+      initialRoute: '/',
       routes: {
-
-
-
+        '/': (context) => const LoginPage(),
+        '/home': (context) => const BerandaPage(),
       },
     );
   }

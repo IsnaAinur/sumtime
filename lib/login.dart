@@ -10,16 +10,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-
   bool _isPasswordVisible = false;
-
-  Color _getColorFromHex(String hexColor) {
-    hexColor = hexColor.toUpperCase().replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor'; 
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
 
   void _validateLogin() {
     String email = emailController.text.trim();
@@ -39,28 +30,21 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Jika valid, arahkan ke halaman home
+    // Jika valid, pindah ke beranda
     Navigator.pushReplacementNamed(context, '/home');
   }
 
   @override
   Widget build(BuildContext context) {
-    final Color primaryColor = _getColorFromHex('DD0303');
-    final Color secondaryColor = _getColorFromHex('B00020'); 
-    const Color onPrimaryColor = Colors.white;
-
-    final Color highContrastButtonColor = Colors.amber.shade700;
-    const Color onButtonColor = Colors.black;
-
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              primaryColor,
-              secondaryColor,
+              Color(0xFFDD0303),
+              Color(0xFFB00020),
             ],
           ),
         ),
@@ -74,14 +58,14 @@ class _LoginPageState extends State<LoginPage> {
                   const Icon(
                     Icons.lock_person,
                     size: 80,
-                    color: onPrimaryColor,
+                    color: Colors.white,
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     "SELAMAT DATANG",
                     style: TextStyle(
                       fontSize: 14,
-                      color: onPrimaryColor,
+                      color: Colors.white,
                     ),
                   ),
                   const Text(
@@ -89,12 +73,12 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
-                      color: onPrimaryColor,
+                      color: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 50),
 
-                  //Input Field Email
+                  // Input Email
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
@@ -105,17 +89,17 @@ class _LoginPageState extends State<LoginPage> {
                       child: TextField(
                         controller: emailController,
                         keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           labelText: "Email",
                           border: InputBorder.none,
-                          prefixIcon: Icon(Icons.email, color: primaryColor),
+                          prefixIcon: Icon(Icons.email, color: Colors.red),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  //Input Field Password
+                  // Input Password
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
@@ -129,13 +113,13 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: InputDecoration(
                           labelText: "Password",
                           border: InputBorder.none,
-                          prefixIcon: Icon(Icons.lock, color: primaryColor),
+                          prefixIcon: const Icon(Icons.lock, color: Colors.red),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isPasswordVisible
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: primaryColor,
+                              color: Colors.red,
                             ),
                             onPressed: () {
                               setState(() {
@@ -149,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  //Tombol Masuk
+                  // Tombol Masuk
                   SizedBox(
                     width: double.infinity,
                     height: 55,
@@ -159,14 +143,14 @@ class _LoginPageState extends State<LoginPage> {
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        backgroundColor: highContrastButtonColor,
+                        backgroundColor: Colors.amber.shade700,
                         elevation: 15,
                       ),
                       child: const Text(
                         "Masuk",
                         style: TextStyle(
                           fontSize: 18,
-                          color: onButtonColor,
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -174,27 +158,10 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
-                  //Tombol Daftar
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text(
-                        "Belum punya akun? ",
-                        style: TextStyle(color: onPrimaryColor),
-                      ),
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pushNamed(context, '/register');
-                        },
-                        child: const Text(
-                          "Daftar disini",
-                          style: TextStyle(
-                            color: Colors.yellowAccent, 
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
+                  // Tombol Daftar (belum aktif)
+                  const Text(
+                    "Belum punya akun? Daftar disini",
+                    style: TextStyle(color: Colors.white),
                   ),
                 ],
               ),
