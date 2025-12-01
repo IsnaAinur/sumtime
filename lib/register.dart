@@ -1,31 +1,25 @@
 import 'package:flutter/material.dart';
 
-class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+class RegisterPage extends StatefulWidget {
+  const RegisterPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  State<RegisterPage> createState() => _RegisterPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _RegisterPageState extends State<RegisterPage> {
+  final usernameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
 
-  Color _getColorFromHex(String hexColor) {
-    hexColor = hexColor.toUpperCase().replaceAll('#', '');
-    if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor'; 
-    }
-    return Color(int.parse(hexColor, radix: 16));
-  }
-
-  void _validateLogin() {
+  void _validateRegister() {
+    String username = usernameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    if (username.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Tolong lengkapi semua kolom")),
       );
@@ -43,80 +37,114 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final Color primaryColor = _getColorFromHex('DD0303');
-    final Color secondaryColor = _getColorFromHex('B00020'); 
-    const Color onPrimaryColor = Colors.white;
+  void dispose() {
+    usernameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
-    final Color highContrastButtonColor = Colors.amber.shade700;
-    const Color onButtonColor = Colors.black;
+  @override
+  Widget build(BuildContext context) {
+    const Color primaryRed = Color(0xFFDD0303);
+    const Color darkRed = Color(0xFFB00020);
 
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              primaryColor,
-              secondaryColor,
+              primaryRed,
+              darkRed,
             ],
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: SingleChildScrollView(
+        child: SafeArea(
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.lock_person,
-                    size: 80,
-                    color: onPrimaryColor,
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
                   ),
                   const SizedBox(height: 10),
-                  const Text(
-                    "SELAMAT DATANG",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: onPrimaryColor,
+
+                  // Icon pendaftaran
+                  const Center(
+                    child: Icon(
+                      Icons.person_add_alt_1,
+                      size: 80,
+                      color: Colors.white,
                     ),
                   ),
-                  const Text(
-                    "Silahkan Login",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: onPrimaryColor,
+                  const SizedBox(height: 10),
+                  
+                  // Judul
+                  const Center(
+                    child: Text(
+                      "Buat Akun Baru",
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 50),
 
+                  // Input Username
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
                       child: TextField(
-                        controller: emailController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: InputDecoration(
-                          labelText: "Email",
+                        controller: usernameController,
+                        decoration: const InputDecoration(
+                          labelText: "Username",
                           border: InputBorder.none,
-                          prefixIcon: Icon(Icons.email, color: primaryColor),
+                          prefixIcon: Icon(Icons.person, color: primaryRed),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
+                  // Input Email
                   Card(
                     elevation: 5,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: "Email",
+                          border: InputBorder.none,
+                          prefixIcon: Icon(Icons.email, color: primaryRed),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Input Password
+                  Card(
+                    elevation: 5,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 8.0),
@@ -126,13 +154,13 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: InputDecoration(
                           labelText: "Password",
                           border: InputBorder.none,
-                          prefixIcon: Icon(Icons.lock, color: primaryColor),
+                          prefixIcon: const Icon(Icons.lock, color: primaryRed),
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isPasswordVisible
                                   ? Icons.visibility
                                   : Icons.visibility_off,
-                              color: primaryColor,
+                              color: primaryRed,
                             ),
                             onPressed: () {
                               setState(() {
@@ -144,25 +172,26 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 40),
 
+                  // Tombol Daftar
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: _validateLogin,
+                      onPressed: _validateRegister,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(20),
                         ),
-                        backgroundColor: highContrastButtonColor,
+                        backgroundColor: Colors.amber.shade700,
                         elevation: 15,
                       ),
                       child: const Text(
-                        "Masuk",
+                        "Daftar",
                         style: TextStyle(
                           fontSize: 18,
-                          color: onButtonColor,
+                          color: Colors.black,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -170,21 +199,22 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
 
+                  // Link ke Login
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Text(
-                        "Belum punya akun? ",
-                        style: TextStyle(color: onPrimaryColor),
+                        "Sudah punya akun? ",
+                        style: TextStyle(color: Colors.white),
                       ),
                       GestureDetector(
                         onTap: () {
-                          Navigator.pushNamed(context, '/register');
+                          Navigator.pop(context);
                         },
                         child: const Text(
-                          "Daftar disini",
+                          "Masuk disini",
                           style: TextStyle(
-                            color: Colors.yellowAccent, 
+                            color: Colors.yellowAccent,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
