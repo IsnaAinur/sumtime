@@ -35,6 +35,12 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Plugin untuk mendapatkan lokasi perangkat (GPS, dsb.)
+  geolocator: ^14.0.2
+
+  # Plugin untuk konversi koordinat <-> alamat (reverse geocoding)
+  geocoding: ^3.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

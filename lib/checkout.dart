@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class CheckoutPage extends StatefulWidget {
   /// List keranjang dengan struktur yang sama seperti di `beranda.dart`
@@ -19,6 +21,96 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final TextEditingController _deliveryController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+
+  /// Mengambil lokasi saat ini menggunakan Geolocator lalu mengonversi
+  /// koordinat menjadi alamat/nama tempat (reverse geocoding) dan
+  /// mengisi ke field lokasi pengiriman.
+  Future<void> _fillCurrentLocation() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Layanan lokasi tidak aktif. Aktifkan GPS terlebih dahulu.'),
+          ),
+        );
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Izin lokasi ditolak. Tidak bisa mengambil lokasi.'),
+            ),
+          );
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Izin lokasi ditolak permanen. Ubah izin di pengaturan aplikasi.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Izin sudah diberikan, ambil posisi sekarang.
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Konversi koordinat menjadi alamat yang lebih mudah dibaca user.
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      String formatted = '';
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        // Susun alamat singkat: nama jalan, kelurahan/kecamatan, kota
+        final street = place.street;
+        final subLocality = place.subLocality;
+        final locality = place.locality;
+        final administrativeArea = place.administrativeArea;
+
+        final parts = <String>[
+          if (street != null && street.isNotEmpty) street,
+          if (subLocality != null && subLocality.isNotEmpty) subLocality,
+          if (locality != null && locality.isNotEmpty) locality,
+          if (administrativeArea != null && administrativeArea.isNotEmpty)
+            administrativeArea,
+        ];
+
+        formatted = parts.join(', ');
+      }
+
+      // Jika reverse geocoding gagal atau alamat kosong, fallback ke koordinat.
+      if (formatted.isEmpty) {
+        formatted =
+            '${position.latitude.toStringAsFixed(6)}, ${position.longitude.toStringAsFixed(6)}';
+      }
+
+      setState(() {
+        _deliveryController.text = formatted;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mengambil lokasi: $e')),
+      );
+    }
+  }
 
   @override
   void dispose() {
@@ -130,7 +222,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             ),
             const SizedBox(height: 15),
 
-            // Input Field Lokasi Pengiriman (bisa ketik + pilih dari Maps)
+            // Input Field Lokasi Pengiriman (bisa ketik atau pakai lokasi saat ini)
             Row(
               children: [
                 Expanded(
@@ -140,34 +232,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // Tombol untuk ambil lokasi saat ini
                 SizedBox(
                   height: 56,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      if (_deliveryController.text.isEmpty) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Isi alamat pengiriman terlebih dahulu atau ketuk di Maps.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      await _openInMaps(_deliveryController.text);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFDD0303),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    icon: const Icon(Icons.map),
-                    label: const Text(
-                      'Pilih',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                  child: IconButton(
+                    onPressed: _fillCurrentLocation,
+                    icon: const Icon(Icons.my_location, color: Color(0xFFDD0303)),
+                    tooltip: 'Gunakan lokasi saya',
                   ),
                 ),
               ],

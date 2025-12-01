@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Deskripsi izin lokasi untuk Geolocator / Geocoding -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi membutuhkan akses lokasi untuk mengisi alamat pengiriman Anda.</string>
 </dict>
 </plist>
