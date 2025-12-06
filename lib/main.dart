@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
-import 'beranda.dart';
 
 void main() {
   runApp(const MyApp());
@@ -17,12 +16,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      // Atur route ke login dan beranda
-      initialRoute: '/',
-      routes: {
-        '/': (context) => const LoginPage(),
-        '/home': (context) => const BerandaPage(),
-      },
+      // Hanya buka halaman login
+      home: const LoginPage(),
     );
   }
 }

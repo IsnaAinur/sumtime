@@ -4,7 +4,7 @@ class InfoMenuPage extends StatefulWidget {
   final String namaMenu;
   final String deskripsi;
   final int harga;
-  final String fotoAsset; // misalnya: "assets/images/nasigoreng.jpg"
+  final String fotoAsset; // bisa berupa asset path atau URL
 
   const InfoMenuPage({
     super.key,
@@ -62,10 +62,53 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFDD0303),
                   borderRadius: BorderRadius.circular(12),
-                  image: DecorationImage(
-                    image: AssetImage(widget.fotoAsset),
-                    fit: BoxFit.cover,
-                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: widget.fotoAsset.startsWith('http')
+                      ? Image.network(
+                          widget.fotoAsset,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(
+                                Icons.broken_image,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                          loadingBuilder: (context, child, loadingProgress) {
+                            if (loadingProgress == null) return child;
+                            return Center(
+                              child: CircularProgressIndicator(
+                                value: loadingProgress.expectedTotalBytes != null
+                                    ? loadingProgress.cumulativeBytesLoaded /
+                                        loadingProgress.expectedTotalBytes!
+                                    : null,
+                              ),
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          widget.fotoAsset,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: Colors.grey.shade300,
+                              child: const Icon(
+                                Icons.broken_image,
+                                size: 50,
+                                color: Colors.grey,
+                              ),
+                            );
+                          },
+                        ),
                 ),
               ),
             ),
@@ -188,7 +231,21 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
                 ),
               ),
               onPressed: () {
-                // aksi checkout
+                // Format harga dengan format ribuan
+                String formattedPrice = 'Rp ${widget.harga.toString().replaceAllMapped(
+                  RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                  (Match m) => '${m[1]}.',
+                )}';
+                
+                // Kembalikan data ke beranda dengan jumlah yang dipilih
+                Navigator.pop(context, {
+                  'name': widget.namaMenu,
+                  'price': formattedPrice,
+                  'harga': widget.harga,
+                  'image': widget.fotoAsset,
+                  'deskripsi': widget.deskripsi,
+                  'jumlah': jumlah,
+                });
               },
               child: const Text(
                 "CHECKOUT",

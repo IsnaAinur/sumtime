@@ -10,30 +10,54 @@ class BerandaPage extends StatefulWidget {
 class _BerandaPageState extends State<BerandaPage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
+  String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
+  bool _isSearching = false;
+  String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
+  final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
 
   // Sample data for products
-  final List<Map<String, dynamic>> _products = [
+  final List<Map<String, dynamic>> _allProducts = [
     {
       'name': 'Dimsum Ayam',
       'price': 'Rp 25.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
     },
     {
       'name': 'Dimsum Udang',
       'price': 'Rp 28.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
+    },
+    {
+      'name': 'Dimsum Ayam',
+      'price': 'Rp 25.000',
+      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
+    },
+    {
+      'name': 'Dimsum Udang',
+      'price': 'Rp 28.000',
+      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
     },
     {
       'name': 'Es Jeruk',
       'price': 'Rp 15.000',
-      'image': 'assets/dimsum1.jpg',
+      'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
     },
     {
       'name': 'Es Teh',
       'price': 'Rp 12.000',
-      'image': 'assets/dimsum1.jpg',
-    },
+      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',  
+   },
+
   ];
+
+  // List produk yang akan ditampilkan (hasil filter)
+  late List<Map<String, dynamic>> _filteredProducts;
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+  }
 
   @override
   void dispose() {
@@ -59,12 +83,12 @@ class _BerandaPageState extends State<BerandaPage> {
                         width: 40,
                         height: 40,
                         decoration: BoxDecoration(
-                          color: Colors.orange.shade100,
+                          color: const Color(0xFFDD0303),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: const Icon(
                           Icons.restaurant_menu,
-                          color: Colors.orange,
+                          color: Color(0xFFDD0303),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -73,7 +97,7 @@ class _BerandaPageState extends State<BerandaPage> {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
-                          color: Colors.orange,
+                          color: Color(0xFFDD0303),
                         ),
                       ),
                     ],
@@ -87,14 +111,22 @@ class _BerandaPageState extends State<BerandaPage> {
                     ),
                     child: TextField(
                       controller: _searchController,
-                      decoration: const InputDecoration(
-                        hintText: 'Cari menu',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(
+                    onChanged: _onSearchChanged,
+                    decoration: const InputDecoration(
+                      hintText: 'Cari menu',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 12,
                         ),
-                        prefixIcon: Icon(Icons.search),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: Color(0xFFDD0303),
+                        ),
+                        suffixIcon: Icon(
+                          Icons.search,
+                          color: Color(0xFFDD0303),
+                        ),
                       ),
                     ),
                   ),
@@ -110,68 +142,101 @@ class _BerandaPageState extends State<BerandaPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Poster Section
-                      Container(
-                        width: double.infinity,
-                        height: 180,
-                        decoration: BoxDecoration(
-                          color: Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: Colors.orange.shade200,
-                            width: 2,
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            'Poster',
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange.shade700,
+                      if (!_isSearching) ...[
+                        // Poster Section
+                        Container(
+                          width: double.infinity,
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: const Color.fromARGB(255, 255, 255, 255),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(0xFFDD0303),
+                              width: 2,
                             ),
                           ),
+                          child: _posterUrl.isNotEmpty
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.network(
+                                    _posterUrl,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    errorBuilder: (context, error, stackTrace) {
+                                      return const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          size: 40,
+                                          color: Colors.grey,
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Center(
+                                  child: Text(
+                                    'Poster',
+                                    style: TextStyle(
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFFDD0303),
+                                    ),
+                                  ),
+                                ),
                         ),
-                      ),
-                      const SizedBox(height: 24),
-                      
-                      // Kategori Section
-                      const Text(
-                        'Kategori',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+                        const SizedBox(height: 24),
+                        
+                        // Kategori Section
+                        const Text(
+                          'Kategori',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildCategoryButton('Dimsum', Icons.restaurant),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildCategoryButton('Minuman', Icons.local_drink),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildCategoryButton(
+                                'Dimsum',
+                                Icons.restaurant,
+                                isSelected: _selectedCategory == 'Dimsum',
+                                onTap: () => _onCategorySelected('Dimsum'),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildCategoryButton(
+                                'Minuman',
+                                Icons.local_drink,
+                                isSelected: _selectedCategory == 'Minuman',
+                                onTap: () => _onCategorySelected('Minuman'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                       
                       // Product Grid
                       GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2,
                           crossAxisSpacing: 12,
                           mainAxisSpacing: 12,
                           childAspectRatio: 0.75,
                         ),
-                        itemCount: _products.length,
+                        itemCount: _filteredProducts.length,
                         itemBuilder: (context, index) {
-                          return _buildProductCard(_products[index]);
+                          return _buildProductCard(_filteredProducts[index]);
                         },
                       ),
+
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -181,43 +246,58 @@ class _BerandaPageState extends State<BerandaPage> {
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        selectedItemColor: Colors.orange,
-        unselectedItemColor: Colors.grey,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'Beranda',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: 'Keranjang',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profil',
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_cart.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              child: _buildCheckoutBar(),
+            ),
+          BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            selectedItemColor: const Color(0xFFDD0303),
+            unselectedItemColor: Colors.grey,
+            items: const [
+              BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: 'Beranda',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_cart),
+                label: 'Keranjang',
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: 'Profil',
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryButton(String label, IconData icon) {
+  Widget _buildCategoryButton(
+    String label,
+    IconData icon, {
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
     return ElevatedButton(
-      onPressed: () {},
+      onPressed: onTap,
       style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.orange.shade50,
-        foregroundColor: Colors.orange.shade700,
+        backgroundColor: isSelected ? const Color(0xFFDD0303) : Colors.white,
+        foregroundColor: isSelected ? Colors.white : const Color(0xFFDD0303),
         padding: const EdgeInsets.symmetric(vertical: 16),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: Colors.orange.shade300),
+          side: const BorderSide(color: Color(0xFFDD0303)),
         ),
       ),
       child: Row(
@@ -254,7 +334,7 @@ class _BerandaPageState extends State<BerandaPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Product Image Placeholder
+          // Product Image
           Expanded(
             child: Container(
               width: double.infinity,
@@ -265,10 +345,41 @@ class _BerandaPageState extends State<BerandaPage> {
                   topRight: Radius.circular(12),
                 ),
               ),
-              child: const Icon(
-                Icons.image,
-                size: 40,
-                color: Colors.grey,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  topRight: Radius.circular(12),
+                ),
+                child: product['image'] != null && product['image'].toString().startsWith('http')
+                    ? Image.network(
+                        product['image'],
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.image,
+                            size: 40,
+                            color: Colors.grey,
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                      loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                      )
+                    : const Icon(
+                        Icons.image,
+                        size: 40,
+                        color: Colors.grey,
+                      ),
               ),
             ),
           ),
@@ -304,7 +415,7 @@ class _BerandaPageState extends State<BerandaPage> {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: Colors.orange,
+                      color: const Color(0xFFDD0303),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: IconButton(
@@ -314,9 +425,7 @@ class _BerandaPageState extends State<BerandaPage> {
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: () {
-                        // Add to cart functionality
-                      },
+                      onPressed: () => _addToCart(product),
                     ),
                   ),
                 ),
@@ -325,6 +434,211 @@ class _BerandaPageState extends State<BerandaPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCheckoutBar() {
+    final int itemCount = _cart.length;
+
+    return GestureDetector(
+      onTap: _showCheckout,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFFDD0303),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.shopping_bag,
+                  color: Colors.white,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Checkout $itemCount menu',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.white,
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _isSearching = query.isNotEmpty;
+      _applyFilters();
+    });
+  }
+
+  void _onCategorySelected(String category) {
+    setState(() {
+      _selectedCategory = category;
+      _applyFilters();
+    });
+  }
+
+  void _applyFilters() {
+    final query = _searchController.text.trim().toLowerCase();
+
+    // Mulai dari semua produk
+    Iterable<Map<String, dynamic>> products = _allProducts;
+
+    // Filter berdasarkan kategori
+    if (_selectedCategory == 'Dimsum') {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        return name.contains('dimsum');
+      });
+    } else if (_selectedCategory == 'Minuman') {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        // Di data sekarang, minuman adalah yang diawali "Es"
+        return name.startsWith('es ');
+      });
+    }
+
+    // Filter berdasarkan pencarian
+    if (query.isNotEmpty) {
+      products = products.where((product) {
+        final name = (product['name'] ?? '').toString().toLowerCase();
+        return name.contains(query);
+      });
+    }
+
+    _filteredProducts = products.toList();
+  }
+
+  void _addToCart(Map<String, dynamic> product) {
+    setState(() {
+      _cart.add(product);
+    });
+  }
+
+  void _showCheckout() {
+    if (_cart.isEmpty) return;
+
+    // Kelompokkan item berdasarkan nama untuk menampilkan qty
+    final Map<String, Map<String, dynamic>> grouped = {};
+    for (final product in _cart) {
+      final String name = (product['name'] ?? 'Menu').toString();
+      if (!grouped.containsKey(name)) {
+        grouped[name] = {
+          'product': product,
+          'qty': 1,
+        };
+      } else {
+        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
+      }
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        final entries = grouped.entries.toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Info Pesanan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: entries.length,
+                  itemBuilder: (context, index) {
+                    final entry = entries[index];
+                    final product = entry.value['product'] as Map<String, dynamic>;
+                    final int qty = entry.value['qty'] as int;
+                    final String price =
+                        (product['price'] ?? '-').toString();
+
+                    return ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        entry.key,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      subtitle: Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      trailing: Text(
+                        'x$qty',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDD0303),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  child: const Text(
+                    'Checkout',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }
