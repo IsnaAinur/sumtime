@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'beranda.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -15,7 +16,7 @@ class _RegisterPageState extends State<RegisterPage> {
 
   bool _isPasswordVisible = false;
 
-  void _validateRegister() {
+  Future<void> _validateRegister() async {
     String username = usernameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
@@ -34,11 +35,39 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
+    // Cek apakah email sudah terdaftar
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('email');
+    
+    if (savedEmail != null && savedEmail == email) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email sudah terdaftar!")),
+      );
+      return;
+    }
+
+    // Simpan data ke SharedPreferences
+    await prefs.setString('username', username);
+    await prefs.setString('email', email);
+    await prefs.setString('password', password);
+
+    // Tampilkan pesan sukses
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Registrasi berhasil!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+    }
+
     // Jika valid, pindah ke beranda
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const BerandaPage()),
-    );
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const BerandaPage()),
+      );
+    }
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'beranda.dart';
 import 'register.dart';
 
@@ -23,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
     return Color(int.parse(hexColor, radix: 16));
   }
 
-  void _validateLogin() {
+  Future<void> _validateLogin() async {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
@@ -41,11 +42,39 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    // Validasi dari SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    final savedEmail = prefs.getString('email');
+    final savedPassword = prefs.getString('password');
+
+    if (savedEmail == null || savedPassword == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),
+      );
+      return;
+    }
+
+    if (savedEmail != email || savedPassword != password) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Email atau password salah!")),
+      );
+      return;
+    }
+
     // Jika valid, pindah ke beranda
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const BerandaPage()),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Login berhasil!"),
+          backgroundColor: Colors.green,
+        ),
+      );
+      
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const BerandaPage()),
+      );
+    }
   }
 
   @override
