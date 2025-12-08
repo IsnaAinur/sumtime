@@ -30,7 +30,7 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 247, 218, 192), 
+      backgroundColor: const Color(0xFFDD0303), 
       body: Center(
         child: 
             Image.asset(
