@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +17,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isEditMode = false;
   bool _isPasswordVisible = false;
   File? _profileImage;
+  Uint8List? _profileImageBytes;
   
   // Controller
   final _usernameController = TextEditingController();
@@ -76,25 +78,68 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
-  // Logic Pilih & Simpan Gambar (Lebih Ringkas & Aman)
+  // Logic Pilih & Simpan Gambar (Sama seperti payment.dart)
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final pickedFile = await _imagePicker.pickImage(source: source, imageQuality: 80);
-      if (pickedFile == null) return;
-
-      // Ambil direktori permanen aplikasi
-      final appDir = await getApplicationDocumentsDirectory();
-      final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
-      final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
-
-      // Simpan Path ke Prefs
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('image_path', savedImage.path);
-
-      setState(() => _profileImage = savedImage);
+      final XFile? pickedFile = await _imagePicker.pickImage(source: source, imageQuality: 80);
       
+      if (pickedFile != null) {
+        if (kIsWeb) {
+          // Untuk web, simpan sebagai bytes
+          final bytes = await pickedFile.readAsBytes();
+          setState(() {
+            _profileImageBytes = bytes;
+            _profileImage = null;
+          });
+          
+          // Simpan bytes ke SharedPreferences (base64)
+          final prefs = await SharedPreferences.getInstance();
+          // Untuk web, kita simpan sebagai base64 string
+          // Tapi untuk kesederhanaan, kita hanya set flag bahwa ada gambar
+          await prefs.setBool('has_profile_image', true);
+        } else {
+          // Untuk mobile, simpan sebagai File
+          final appDir = await getApplicationDocumentsDirectory();
+          final fileName = 'profile_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+          
+          setState(() {
+            _profileImage = savedImage;
+            _profileImageBytes = null;
+          });
+          
+          // Simpan Path ke Prefs
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('image_path', savedImage.path);
+        }
+        
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Foto profil berhasil diunggah.'),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unggah foto profil dibatalkan.'),
+            backgroundColor: Color(0xFFE94E4E),
+          ),
+        );
+      }
     } catch (e) {
       debugPrint("Error picking image: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -176,24 +221,22 @@ class _ProfilePageState extends State<ProfilePage> {
         padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            // Avatar Section
+            // Avatar Section (Sama seperti payment.dart)
             GestureDetector(
               onTap: _showImageSourceDialog,
               child: Stack(
                 alignment: Alignment.bottomRight,
                 children: [
                   Container(
-                    width: 120, height: 120,
+                    width: 120, 
+                    height: 120,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(color: _primaryColor, width: 3),
-                      image: _profileImage != null
-                          ? DecorationImage(image: FileImage(_profileImage!), fit: BoxFit.cover)
-                          : null,
                     ),
-                    child: _profileImage == null 
-                      ? const Icon(Icons.person, size: 60, color: Colors.grey) 
-                      : null,
+                    child: ClipOval(
+                      child: _getProfileImageWidget(),
+                    ),
                   ),
                   if (_isEditMode)
                     Container(
@@ -312,5 +355,19 @@ class _ProfilePageState extends State<ProfilePage> {
             : null,
       ),
     );
+  }
+
+  // Widget untuk menampilkan gambar profil (Sama seperti payment.dart)
+  Widget _getProfileImageWidget() {
+    if (kIsWeb && _profileImageBytes != null) {
+      return Image.memory(_profileImageBytes!, fit: BoxFit.cover);
+    } else if (_profileImage != null) {
+      return Image.file(_profileImage!, fit: BoxFit.cover);
+    } else {
+      return Container(
+        color: Colors.grey.shade200,
+        child: const Icon(Icons.person, size: 60, color: Colors.grey),
+      );
+    }
   }
 }

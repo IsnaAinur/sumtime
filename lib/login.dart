@@ -47,6 +47,8 @@ class _LoginPageState extends State<LoginPage> {
     final savedEmail = prefs.getString('email');
     final savedPassword = prefs.getString('password');
 
+    if (!mounted) return;
+
     if (savedEmail == null || savedPassword == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),

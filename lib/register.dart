@@ -39,6 +39,8 @@ class _RegisterPageState extends State<RegisterPage> {
     final prefs = await SharedPreferences.getInstance();
     final savedEmail = prefs.getString('email');
     
+    if (!mounted) return;
+    
     if (savedEmail != null && savedEmail == email) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email sudah terdaftar!")),

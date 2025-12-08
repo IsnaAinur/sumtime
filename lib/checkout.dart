@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'payment.dart';
 
 class CheckoutPage extends StatefulWidget {
-  /// List keranjang dengan struktur yang sama seperti di `beranda.dart`
-  /// Contoh item: { 'name': 'Dimsum Ayam', 'price': 'Rp 25.000', 'image': '...' }
+
   final List<Map<String, dynamic>> cart;
 
   const CheckoutPage({super.key, required this.cart});
@@ -21,9 +21,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
 
-  /// Mengambil lokasi saat ini menggunakan Geolocator lalu mengonversi
-  /// koordinat menjadi alamat/nama tempat (reverse geocoding) dan
-  /// mengisi ke field lokasi pengiriman.
   Future<void> _fillCurrentLocation() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -79,7 +76,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       String formatted = '';
       if (placemarks.isNotEmpty) {
         final place = placemarks.first;
-        // Susun alamat singkat: nama jalan, kelurahan/kecamatan, kota
+       
         final street = place.street;
         final subLocality = place.subLocality;
         final locality = place.locality;
@@ -123,7 +120,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.dispose();
   }
 
-  // Helper function untuk format harga dengan pemisah ribuan
   String _formatPrice(int price) {
     return price.toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
@@ -131,7 +127,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     );
   }
 
-  // Hitung total harga dari cart
   int _calculateSubtotal() {
     int total = 0;
     for (final product in widget.cart) {
@@ -392,11 +387,10 @@ class _CheckoutPageState extends State<CheckoutPage> {
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
-                  // Aksi ketika tombol ditekan
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Melanjutkan ke pembayaran...'),
-                    ),
+                  // Navigate ke halaman pembayaran
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PaymentPage()),
                   );
                 },
                 style: ElevatedButton.styleFrom(
