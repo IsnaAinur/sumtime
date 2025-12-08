@@ -100,6 +100,7 @@ class OrderCard extends StatelessWidget {
     required this.onAccept,
   });
 
+  // Order Card
   final String orderId;
   final int price;
   final VoidCallback onAccept;
