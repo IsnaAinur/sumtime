@@ -434,7 +434,7 @@ class _BerandaPageState extends State<BerandaPage> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('${product['name']} ditambahkan ke keranjang'),
-                          duration: const Duration(seconds: 1),
+                          duration: const Duration(milliseconds: 500),
                           backgroundColor: const Color(0xFFDD0303),
                         ),
                       );
@@ -499,7 +499,7 @@ class _BerandaPageState extends State<BerandaPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${jumlah}x ${result['name']} ditambahkan ke keranjang'),
-            duration: const Duration(seconds: 2),
+            duration: const Duration(milliseconds: 800),
             backgroundColor: const Color(0xFFDD0303),
           ),
         );

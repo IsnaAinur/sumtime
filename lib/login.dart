@@ -69,6 +69,7 @@ class _LoginPageState extends State<LoginPage> {
         const SnackBar(
           content: Text("Login berhasil!"),
           backgroundColor: Colors.green,
+          duration: Duration(milliseconds: 800),
         ),
       );
       

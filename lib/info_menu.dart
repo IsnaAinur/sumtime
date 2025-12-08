@@ -65,8 +65,8 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
             // FOTO MENU
             Center(
               child: Container(
-                height: 220,
-                width: double.infinity,
+                height: 400,
+                width: 400,
                 decoration: BoxDecoration(
                   color: const Color(0xFFDD0303),
                   borderRadius: BorderRadius.circular(12),
@@ -210,16 +210,13 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
       bottomNavigationBar: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
         height: 90,
-        decoration: const BoxDecoration(
-          border: Border(top: BorderSide(color: Colors.black12)),
-          color: Colors.white,
+        decoration: BoxDecoration(
+          border: const Border(top: BorderSide(color: Colors.black12)),
+          color: Colors.grey.shade100,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // ICON HOME
-            const Icon(Icons.home, size: 30),
-
             // TOTAL HARGA
             Text(
               "Rp ${_formatPrice(widget.harga * jumlah)}",
