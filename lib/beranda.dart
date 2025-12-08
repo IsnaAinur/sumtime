@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'profile.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
+import 'history_pesanan.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -257,7 +258,13 @@ class _BerandaPageState extends State<BerandaPage> {
           BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) {
-              if (index == 2) {
+              if (index == 1) {
+                // Navigasi ke halaman riwayat pesanan
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const HistoryPesananPage()),
+                );
+              } else if (index == 2) {
                 // Navigasi ke halaman profil
                 Navigator.push(
                   context,
@@ -277,8 +284,8 @@ class _BerandaPageState extends State<BerandaPage> {
                 label: 'Beranda',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.shopping_cart),
-                label: 'Keranjang',
+                icon: Icon(Icons.history),
+                label: 'Riwayat Pesanan',
               ),
               BottomNavigationBarItem(
                 icon: Icon(Icons.person),

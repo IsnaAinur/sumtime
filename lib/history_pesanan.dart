@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'rincianpesanan.dart';
 
 class HistoryPesananPage extends StatefulWidget {
   const HistoryPesananPage({super.key});
@@ -12,15 +13,123 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
 
   int selectedTab = 0; // 0: Berlangsung, 1: Selesai
 
-  final List<OrderItem> berlangsung = const [
-    OrderItem(orderId: 'ORD-1001', priceText: 'Rp. 25.000'),
-    OrderItem(orderId: 'ORD-1002', priceText: 'Rp. 110.000'),
-    OrderItem(orderId: 'ORD-1003', priceText: 'Rp. 57.500'),
+  // Data pesanan berlangsung (status 0-2)
+  final List<OrderItem> berlangsung = [
+    OrderItem(
+      orderId: 'ORD-1001',
+      priceText: 'Rp. 81.000',
+      orderItems: [
+        {
+          'name': 'Dimsum Ayam',
+          'price': 'Rp 25.000',
+          'harga': 25000,
+          'quantity': 1,
+        },
+        {
+          'name': 'Dimsum Udang',
+          'price': 'Rp 28.000',
+          'harga': 28000,
+          'quantity': 2,
+        },
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(hours: 2)),
+      status: 1, // Pesanan Dibuatkan
+    ),
+    OrderItem(
+      orderId: 'ORD-1002',
+      priceText: 'Rp. 120.000',
+      orderItems: [
+        {
+          'name': 'Dimsum Ayam',
+          'price': 'Rp 25.000',
+          'harga': 25000,
+          'quantity': 3,
+        },
+        {
+          'name': 'Es Jeruk',
+          'price': 'Rp 15.000',
+          'harga': 15000,
+          'quantity': 3,
+        },
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(hours: 5)),
+      status: 2, // Makanan dalam Pengantaran
+    ),
+    OrderItem(
+      orderId: 'ORD-1003',
+      priceText: 'Rp. 67.500',
+      orderItems: [
+        {
+          'name': 'Dimsum Udang',
+          'price': 'Rp 28.000',
+          'harga': 28000,
+          'quantity': 1,
+        },
+        {
+          'name': 'Es Teh',
+          'price': 'Rp 12.000',
+          'harga': 12000,
+          'quantity': 1,
+        },
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(minutes: 30)),
+      status: 0, // Pesanan Diterima
+    ),
   ];
 
-  final List<OrderItem> selesai = const [
-    OrderItem(orderId: 'ORD-0901', priceText: 'Rp. 89.000'),
-    OrderItem(orderId: 'ORD-0902', priceText: 'Rp. 40.000'),
+  // Data pesanan selesai (status 3)
+  final List<OrderItem> selesai = [
+    OrderItem(
+      orderId: 'ORD-0901',
+      priceText: 'Rp. 99.000',
+      orderItems: [
+        {
+          'name': 'Dimsum Ayam',
+          'price': 'Rp 25.000',
+          'harga': 25000,
+          'quantity': 2,
+        },
+        {
+          'name': 'Dimsum Udang',
+          'price': 'Rp 28.000',
+          'harga': 28000,
+          'quantity': 1,
+        },
+        {
+          'name': 'Es Jeruk',
+          'price': 'Rp 15.000',
+          'harga': 15000,
+          'quantity': 1,
+        },
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(days: 2)),
+      status: 3, // Selesai
+    ),
+    OrderItem(
+      orderId: 'ORD-0902',
+      priceText: 'Rp. 50.000',
+      orderItems: [
+        {
+          'name': 'Dimsum Ayam',
+          'price': 'Rp 25.000',
+          'harga': 25000,
+          'quantity': 1,
+        },
+        {
+          'name': 'Es Teh',
+          'price': 'Rp 12.000',
+          'harga': 12000,
+          'quantity': 1,
+        },
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(days: 5)),
+      status: 3, // Selesai
+    ),
   ];
 
   @override
@@ -70,8 +179,18 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
                       orderId: it.orderId,
                       priceText: it.priceText,
                       onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Klik ${it.orderId}')),
+                        // Navigasi ke halaman rincian pesanan dengan data lengkap
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => RincianPesananPage(
+                              orderItems: it.orderItems,
+                              shippingCost: it.shippingCost,
+                              orderNumber: it.orderId,
+                              orderDate: it.orderDate,
+                              currentStatus: it.status,
+                            ),
+                          ),
                         );
                       },
                     );
@@ -235,5 +354,17 @@ class _OrderCard extends StatelessWidget {
 class OrderItem {
   final String orderId;
   final String priceText;
-  const OrderItem({required this.orderId, required this.priceText});
+  final List<Map<String, dynamic>> orderItems;
+  final int shippingCost;
+  final DateTime orderDate;
+  final int status; // 0: Diterima, 1: Dibuatkan, 2: Pengantaran, 3: Selesai
+
+  const OrderItem({
+    required this.orderId,
+    required this.priceText,
+    required this.orderItems,
+    required this.shippingCost,
+    required this.orderDate,
+    required this.status,
+  });
 }

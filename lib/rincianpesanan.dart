@@ -6,6 +6,7 @@ class RincianPesananPage extends StatefulWidget {
   final int? shippingCost;
   final String? orderNumber;
   final DateTime? orderDate;
+  final int? currentStatus;
 
   const RincianPesananPage({
     super.key,
@@ -13,6 +14,7 @@ class RincianPesananPage extends StatefulWidget {
     this.shippingCost,
     this.orderNumber,
     this.orderDate,
+    this.currentStatus,
   });
 
   @override
@@ -56,6 +58,7 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
     _shippingCost = widget.shippingCost ?? 10000;
     _orderNumber = widget.orderNumber ?? 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _orderDate = widget.orderDate ?? DateTime.now();
+    _currentStatus = widget.currentStatus ?? 1; // Default status: Pesanan Dibuatkan
   }
 
   int _calculateSubtotal() {
