@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
+import 'login.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -122,6 +123,46 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
+  // Fungsi logout
+  Future<void> _logout() async {
+    // Tampilkan dialog konfirmasi
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Apakah Anda yakin ingin logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Batal'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: _primaryColor,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Hapus data dari SharedPreferences (atau hanya clear session)
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear(); // Hapus semua data, atau bisa hanya hapus email/password saja
+
+      // Navigate kembali ke login
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false, // Hapus semua route sebelumnya
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -213,6 +254,36 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                 ]
               ],
+            ),
+
+            const SizedBox(height: 20),
+
+            // Tombol Logout
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: BorderSide(color: _primaryColor, width: 2),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _logout,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.logout, color: _primaryColor),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Logout',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _primaryColor,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
