@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'login.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(const SumTimeApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class SumTimeApp extends StatelessWidget {
+  const SumTimeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      // Hanya buka halaman login
+      // Halaman awal adalah login
       home: const LoginPage(),
     );
   }
