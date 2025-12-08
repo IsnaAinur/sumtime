@@ -19,7 +19,7 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
     {"nama": "Dimsum", "harga": "Rp 15.000"},
     {"nama": "Es Teh", "harga": "Rp 3.000"},
     {"nama": "Dimsum", "harga": "Rp 10.000"},
-    {"nama": "Es Jeruk", "harga": "Rp 6.000"},
+    {"nama": "Es Jeruk", "harga": "Rp 5.000"},
   ];
 
   @override
