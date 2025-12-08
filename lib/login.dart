@@ -108,7 +108,7 @@ class _LoginPageState extends State<LoginPage> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
-                    Icons.lock_person,
+                    Icons.login_rounded,
                     size: 80,
                     color: onPrimaryColor,
                   ),

@@ -119,7 +119,7 @@ class _RegisterPageState extends State<RegisterPage> {
                   // Icon pendaftaran
                   const Center(
                     child: Icon(
-                      Icons.person_add_alt_1,
+                      Icons.app_registration_rounded,
                       size: 80,
                       color: Colors.white,
                     ),
