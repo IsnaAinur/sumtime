@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'splash.dart';
 import 'login.dart';
+import 'beranda.dart';
 
 void main() {
   runApp(const SumTimeApp());
@@ -16,8 +18,13 @@ class SumTimeApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.orange,
       ),
-      // Halaman awal adalah login
-      home: const LoginPage(),
+      // Halaman awal adalah splash, kemudian akan redirect ke login
+      initialRoute: '/',
+      routes: {
+        '/': (context) => const SplashPage(),
+        '/login': (context) => const LoginPage(),
+        '/home': (context) => const BerandaPage(),
+      },
     );
   }
 }
