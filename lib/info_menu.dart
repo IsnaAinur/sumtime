@@ -21,6 +21,14 @@ class InfoMenuPage extends StatefulWidget {
 class _InfoMenuPageState extends State<InfoMenuPage> {
   int jumlah = 1;
 
+  // Helper function untuk format harga dengan pemisah ribuan
+  String _formatPrice(int price) {
+    return price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,7 +141,7 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Rp ${widget.harga}",
+                  "Rp ${_formatPrice(widget.harga)}",
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -214,7 +222,7 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
 
             // TOTAL HARGA
             Text(
-              "Rp ${widget.harga * jumlah}",
+              "Rp ${_formatPrice(widget.harga * jumlah)}",
               style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
 
@@ -232,10 +240,7 @@ class _InfoMenuPageState extends State<InfoMenuPage> {
               ),
               onPressed: () {
                 // Format harga dengan format ribuan
-                String formattedPrice = 'Rp ${widget.harga.toString().replaceAllMapped(
-                  RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-                  (Match m) => '${m[1]}.',
-                )}';
+                String formattedPrice = 'Rp ${_formatPrice(widget.harga)}';
                 
                 // Kembalikan data ke beranda dengan jumlah yang dipilih
                 Navigator.pop(context, {

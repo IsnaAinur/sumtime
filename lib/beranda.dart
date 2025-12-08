@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'profile.dart';
 import 'info_menu.dart';
+import 'checkout.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -12,7 +13,7 @@ class BerandaPage extends StatefulWidget {
 class _BerandaPageState extends State<BerandaPage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-  String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
+  final String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
   bool _isSearching = false;
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
   final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
@@ -78,26 +79,26 @@ class _BerandaPageState extends State<BerandaPage> {
                   // Logo
                   Row(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDD0303),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Icon(
-                          Icons.restaurant_menu,
-                          color: Color(0xFFDD0303),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Text(
-                        'SumTime',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFDD0303),
-                        ),
+                      // Logo Image dengan ukuran disesuaikan dengan font
+                      Image.asset(
+                        'assets/logoatas.png',
+                        height: 28, // Ukuran disesuaikan dengan fontSize 20
+                        fit: BoxFit.contain,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Fallback jika logo tidak ditemukan
+                          return Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFDD0303),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Icon(
+                              Icons.restaurant_menu,
+                              color: Colors.white,
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -596,111 +597,10 @@ class _BerandaPageState extends State<BerandaPage> {
   void _showCheckout() {
     if (_cart.isEmpty) return;
 
-    // Kelompokkan item berdasarkan nama untuk menampilkan qty
-    final Map<String, Map<String, dynamic>> grouped = {};
-    for (final product in _cart) {
-      final String name = (product['name'] ?? 'Menu').toString();
-      if (!grouped.containsKey(name)) {
-        grouped[name] = {
-          'product': product,
-          'qty': 1,
-        };
-      } else {
-        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
-      }
-    }
-
-    showModalBottomSheet(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => CheckoutPage(cart: _cart),
       ),
-      builder: (context) {
-        final entries = grouped.entries.toList();
-
-        return Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Info Pesanan',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Flexible(
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: entries.length,
-                  itemBuilder: (context, index) {
-                    final entry = entries[index];
-                    final product = entry.value['product'] as Map<String, dynamic>;
-                    final int qty = entry.value['qty'] as int;
-                    final String price =
-                        (product['price'] ?? '-').toString();
-
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text(
-                        entry.key,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: Text(
-                        price,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                      trailing: Text(
-                        'x$qty',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: 12),
-              Align(
-                alignment: Alignment.centerRight,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDD0303),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Checkout',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
