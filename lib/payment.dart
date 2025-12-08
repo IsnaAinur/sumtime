@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:io'; 
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
+import 'rincianpesanan.dart';
 
 class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
@@ -54,10 +55,11 @@ class _PaymentPageState extends State<PaymentPage> {
 
   void _processPayment() {
     if (_paymentProofFile != null || _paymentProofBytes != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Pembayaran diproses!'),
-          backgroundColor: Colors.blue.shade700,
+      // Navigate ke halaman rincian pesanan setelah pembayaran diproses
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const RincianPesananPage(),
         ),
       );
     } else {
