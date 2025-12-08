@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'profile.dart';
+import 'info_menu.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -20,34 +22,31 @@ class _BerandaPageState extends State<BerandaPage> {
     {
       'name': 'Dimsum Ayam',
       'price': 'Rp 25.000',
+      'harga': 25000,
       'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
+      'deskripsi': 'Dimsum ayam yang lezat dengan isian daging ayam pilihan, dibungkus dengan kulit yang tipis dan lembut. Dimasak dengan teknik steaming yang sempurna untuk menghasilkan tekstur yang kenyal dan rasa yang gurih.',
     },
     {
       'name': 'Dimsum Udang',
       'price': 'Rp 28.000',
+      'harga': 28000,
       'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
-    },
-    {
-      'name': 'Dimsum Ayam',
-      'price': 'Rp 25.000',
-      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
-    },
-    {
-      'name': 'Dimsum Udang',
-      'price': 'Rp 28.000',
-      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
+      'deskripsi': 'Dimsum udang premium dengan isian udang segar yang melimpah. Dibuat dengan resep tradisional yang menghasilkan cita rasa yang autentik dan nikmat.',
     },
     {
       'name': 'Es Jeruk',
       'price': 'Rp 15.000',
+      'harga': 15000,
       'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
+      'deskripsi': 'Es jeruk segar yang menyegarkan, dibuat dari jeruk peras asli tanpa pengawet. Sempurna untuk menemani hidangan dimsum Anda.',
     },
     {
       'name': 'Es Teh',
       'price': 'Rp 12.000',
-      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',  
-   },
-
+      'harga': 12000,
+      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',
+      'deskripsi': 'Es teh manis yang segar, dibuat dari teh pilihan dengan takaran gula yang pas. Minuman klasik yang selalu cocok untuk segala suasana.',
+    },
   ];
 
   // List produk yang akan ditampilkan (hasil filter)
@@ -257,9 +256,17 @@ class _BerandaPageState extends State<BerandaPage> {
           BottomNavigationBar(
             currentIndex: _currentIndex,
             onTap: (index) {
-              setState(() {
-                _currentIndex = index;
-              });
+              if (index == 2) {
+                // Navigasi ke halaman profil
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const ProfilePage()),
+                );
+              } else {
+                setState(() {
+                  _currentIndex = index;
+                });
+              }
             },
             selectedItemColor: const Color(0xFFDD0303),
             unselectedItemColor: Colors.grey,
@@ -318,20 +325,22 @@ class _BerandaPageState extends State<BerandaPage> {
   }
 
   Widget _buildProductCard(Map<String, dynamic> product) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade300),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.shade200,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
+    return GestureDetector(
+      onTap: () => _navigateToInfoMenu(product),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.grey.shade300),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.shade200,
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Product Image
@@ -411,21 +420,29 @@ class _BerandaPageState extends State<BerandaPage> {
                 // Add Button
                 Align(
                   alignment: Alignment.centerRight,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFDD0303),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: IconButton(
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
+                  child: GestureDetector(
+                    onTap: () {
+                      _addToCart(product);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${product['name']} ditambahkan ke keranjang'),
+                          duration: const Duration(seconds: 1),
+                          backgroundColor: const Color(0xFFDD0303),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDD0303),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
                         Icons.add,
                         color: Colors.white,
                         size: 20,
                       ),
-                      onPressed: () => _addToCart(product),
                     ),
                   ),
                 ),
@@ -434,7 +451,52 @@ class _BerandaPageState extends State<BerandaPage> {
           ),
         ],
       ),
+      ),
     );
+  }
+
+  void _navigateToInfoMenu(Map<String, dynamic> product) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InfoMenuPage(
+          namaMenu: product['name'] ?? 'Menu',
+          deskripsi: product['deskripsi'] ?? 'Deskripsi menu tidak tersedia.',
+          harga: product['harga'] ?? 0,
+          fotoAsset: product['image'] ?? '',
+        ),
+      ),
+    );
+
+    // Jika ada result dari checkout, tambahkan ke cart sesuai jumlahnya
+    if (result != null && result is Map<String, dynamic>) {
+      final int jumlah = result['jumlah'] ?? 1;
+      final Map<String, dynamic> itemToAdd = {
+        'name': result['name'],
+        'price': result['price'],
+        'harga': result['harga'],
+        'image': result['image'],
+        'deskripsi': result['deskripsi'],
+      };
+
+      // Tambahkan item ke cart sebanyak jumlah yang dipilih
+      setState(() {
+        for (int i = 0; i < jumlah; i++) {
+          _cart.add(Map<String, dynamic>.from(itemToAdd));
+        }
+      });
+
+      // Tampilkan snackbar konfirmasi
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${jumlah}x ${result['name']} ditambahkan ke keranjang'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFFDD0303),
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildCheckoutBar() {
