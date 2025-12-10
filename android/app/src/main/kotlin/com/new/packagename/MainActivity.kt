@@ -1,4 +1,4 @@
-package com.example.sumtime
+package com.new.packagename
 
 import io.flutter.embedding.android.FlutterActivity
 
