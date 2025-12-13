@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'nav._bottom.dart';
+import 'detail_laporan.dart';
 
 class ReportItem {
   final int no;
@@ -21,9 +23,8 @@ class _LaporanPageState extends State<LaporanPage> {
   final String _totalPendapatan = 'Rp 300.000';
   final String _rataRataPendapatan = 'Rp 300.000';
   
-  String? _selectedBulan = 'Bulan'; 
+  String? _selectedBulan = 'Bulan';
   String? _selectedTahun = 'Tahun'; 
-  int _selectedIndex = 2; 
 
   final List<ReportItem> _reportData = [
     ReportItem(1, '22/11', 'ORD-001', 'Rp 50.000'),
@@ -35,11 +36,6 @@ class _LaporanPageState extends State<LaporanPage> {
   void _fetchReportData() {
   }
 
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   // Ringkasan
   Widget _buildSummaryBox(String title, String value) {
@@ -147,9 +143,9 @@ class _LaporanPageState extends State<LaporanPage> {
                     padding: const EdgeInsets.all(8.0),
                     child: ElevatedButton(
                       onPressed: () {
-                        // TODO: Navigasi ke detail_laporan.dart
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Detail laporan untuk ${item.orderId}')),
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DetailLaporanPage()),
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -239,29 +235,7 @@ class _LaporanPageState extends State<LaporanPage> {
         ),
       ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        items: <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.receipt_long, color: _selectedIndex == 0 ? mainBackgroundColor : Colors.grey),
-            label: 'ORDERAN',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.grid_view, color: _selectedIndex == 1 ? mainBackgroundColor : Colors.grey),
-            label: 'ADD ITEM',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.description, color: _selectedIndex == 2 ? mainBackgroundColor : Colors.grey),
-            label: 'LAPORAN',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: mainBackgroundColor, 
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true, 
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed, 
-        backgroundColor: Colors.white, 
-      ),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
     );
   }
 }

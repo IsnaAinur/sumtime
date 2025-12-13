@@ -10,13 +10,25 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
+  bool _showCompletedOrders = false; // false = Pesanan Berlangsung, true = Selesai
 
   final List<Map<String, dynamic>> orders = [
-    {"id": "ORD-001", "price": 20000},
-    {"id": "ORD-002", "price": 20000},
-    {"id": "ORD-003", "price": 20000},
-    {"id": "ORD-004", "price": 20000},
+    {"id": "ORD-001", "price": 20000, "status": "ongoing"},
+    {"id": "ORD-002", "price": 20000, "status": "ongoing"},
+    {"id": "ORD-003", "price": 20000, "status": "completed"},
+    {"id": "ORD-004", "price": 20000, "status": "completed"},
   ];
+
+  List<Map<String, dynamic>> _getFilteredOrders() {
+    return orders.where((order) {
+      final status = order['status'];
+      if (_showCompletedOrders) {
+        return status == 'completed'; // Tampilkan yang selesai
+      } else {
+        return status == 'ongoing'; // Tampilkan yang berlangsung
+      }
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -27,31 +39,80 @@ class _OrderPageState extends State<OrderPage> {
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: ListView.separated(
-            itemCount: orders.length + 1,
+            itemCount: _getFilteredOrders().length + 1,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Column(
-                  children: const [
-                    SizedBox(height: 8),
-                    Center(
-                      child: Text(
-                        'List Orderan',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Color(0xFFDD0303),
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
+                  children: [
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Center(
+                            child: Text(
+                              'List Orderan',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Color(0xFFDD0303),
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.grey.shade300),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Berlangsung',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Switch(
+                                value: _showCompletedOrders,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _showCompletedOrders = value;
+                                  });
+                                },
+                                activeColor: const Color(0xFFDD0303),
+                                activeTrackColor: const Color(0xFFDD0303).withOpacity(0.3),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Selesai',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 16),
                   ],
                 );
               }
 
               // Kartu Order
-              final order = orders[index - 1];
+              final filteredOrders = _getFilteredOrders();
+              final order = filteredOrders[index - 1];
               return OrderCard(
                 orderId: order['id'],
                 price: order['price'],
