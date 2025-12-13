@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'order_page.dart';
 import 'add_item_main.dart';
+import 'laporan.dart';
 
 class AdminBottomNav extends StatefulWidget {
   final int currentIndex;
@@ -34,9 +35,9 @@ class _AdminBottomNavState extends State<AdminBottomNav> {
         );
         break;
       case 2: // Laporan
-        // TODO: Implementasi halaman laporan
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Halaman Laporan akan segera hadir')),
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const LaporanPage()),
         );
         break;
     }

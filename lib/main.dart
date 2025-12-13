@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'login.dart';
 import 'admin/order_page.dart';
+import 'admin/laporan.dart';
 
 void main() {
   runApp(const SumTimeApp());
@@ -22,6 +23,7 @@ class SumTimeApp extends StatelessWidget {
       routes: {
         '/': (context) => const LoginPage(),
         '/order': (context) => const OrderPage(),
+        '/laporan': (context) => const LaporanPage(),
       },
     );
   }
