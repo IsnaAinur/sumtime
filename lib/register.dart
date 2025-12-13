@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'beranda.dart';
+import 'order_page.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -67,7 +67,7 @@ class _RegisterPageState extends State<RegisterPage> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const BerandaPage()),
+        MaterialPageRoute(builder: (context) => const OrderPage()),
       );
     }
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'beranda.dart';
+import 'order_page.dart';
 import 'register.dart';
 
 class LoginPage extends StatefulWidget {
@@ -53,6 +53,16 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),
       );
+
+      // Navigasi ke halaman register setelah delay singkat
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RegisterPage()),
+          );
+        }
+      });
       return;
     }
 
@@ -75,7 +85,7 @@ class _LoginPageState extends State<LoginPage> {
       
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const BerandaPage()),
+        MaterialPageRoute(builder: (context) => const OrderPage()),
       );
     }
   }
@@ -213,7 +223,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Text(
                         "Belum punya akun? ",
-                        style: TextStyle(color: onPrimaryColor),
+                        style: TextStyle(color: Colors.white),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -225,7 +235,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: const Text(
                           "Daftar disini",
                           style: TextStyle(
-                            color: Colors.yellowAccent, 
+                            color: Colors.yellowAccent,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
