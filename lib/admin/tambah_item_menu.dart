@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'nav._bottom.dart';
 
 class TambahItemMenuPage extends StatefulWidget {
   const TambahItemMenuPage({super.key});
@@ -171,6 +172,7 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
           ),
         ),
       ),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 1),
     );
   }
 }

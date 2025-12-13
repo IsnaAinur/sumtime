@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'nav._bottom.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -8,8 +9,6 @@ class OrderPage extends StatefulWidget {
 }
 
 class _OrderPageState extends State<OrderPage> {
-  static const Color redColor = Color(0xFFDD0303);
-  int _currentIndex = 0;
 
   final List<Map<String, dynamic>> orders = [
     {"id": "ORD-001", "price": 20000},
@@ -66,28 +65,7 @@ class _OrderPageState extends State<OrderPage> {
         ),
       ),
 
-      // Bottom Navigation Bar
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-        },
-        backgroundColor: redColor,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: 'Orderan'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.add_box_outlined),
-            label: 'Add Item',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.insert_chart_outlined),
-            label: 'Laporan',
-          ),
-        ],
-      ),
+      bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
     );
   }
 }
