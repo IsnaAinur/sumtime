@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'nav._bottom.dart';
+import 'pemesanan.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -55,8 +56,9 @@ class _OrderPageState extends State<OrderPage> {
                 orderId: order['id'],
                 price: order['price'],
                 onAccept: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Order ${order['id']} diterima')),
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const PemesananPage()),
                   );
                 },
               );
