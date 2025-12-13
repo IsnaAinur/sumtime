@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'order_page.dart';
-import 'tambah_item_menu.dart';
+import 'add_item_main.dart';
 
 class AdminBottomNav extends StatefulWidget {
   final int currentIndex;
@@ -30,7 +30,7 @@ class _AdminBottomNavState extends State<AdminBottomNav> {
       case 1: // Add Item
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const TambahItemMenuPage()),
+          MaterialPageRoute(builder: (context) => const AddItemMainPage()),
         );
         break;
       case 2: // Laporan
