@@ -48,8 +48,8 @@ class RincianPesananPage extends StatelessWidget {
 
   int get totalHarga {
     final subtotal = orderItems.fold(0, (sum, item) {
-      final harga = item['harga'] ?? 0;
-      final quantity = item['quantity'] ?? 1;
+      final harga = (item['harga'] ?? 0) as int;
+      final quantity = (item['quantity'] ?? 1) as int;
       return sum + (harga * quantity);
     });
     return subtotal + shippingCost;

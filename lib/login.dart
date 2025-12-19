@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'order_page.dart';
+import 'admin/order_page.dart';
 import 'register.dart';
 
 class LoginPage extends StatefulWidget {

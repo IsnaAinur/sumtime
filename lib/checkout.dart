@@ -20,8 +20,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   int get totalHarga {
     return widget.cart.fold(0, (sum, item) {
-      final harga = item['harga'] ?? 0;
-      final jumlah = item['jumlah'] ?? 1;
+      final harga = (item['harga'] ?? 0) as int;
+      final jumlah = (item['jumlah'] ?? 1) as int;
       return sum + (harga * jumlah);
     });
   }
