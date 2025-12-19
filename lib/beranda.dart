@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'profile.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
+import 'bottom_nav_user.dart';
 import 'history_pesanan.dart';
+import 'profile.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -12,7 +13,6 @@ class BerandaPage extends StatefulWidget {
 }
 
 class _BerandaPageState extends State<BerandaPage> {
-  int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   final String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
   bool _isSearching = false;
@@ -247,53 +247,11 @@ class _BerandaPageState extends State<BerandaPage> {
           ],
         ),
       ),
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (_cart.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-              child: _buildCheckoutBar(),
-            ),
-          BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
-              if (index == 1) {
-                // Navigasi ke halaman riwayat pesanan
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const HistoryPesananPage()),
-                );
-              } else if (index == 2) {
-                // Navigasi ke halaman profil
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const ProfilePage()),
-                );
-              } else {
-                setState(() {
-                  _currentIndex = index;
-                });
-              }
-            },
-            selectedItemColor: const Color(0xFFDD0303),
-            unselectedItemColor: Colors.grey,
-            items: const [
-              BottomNavigationBarItem(
-                icon: Icon(Icons.home),
-                label: 'Beranda',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.history),
-                label: 'Riwayat Pesanan',
-              ),
-              BottomNavigationBarItem(
-                icon: Icon(Icons.person),
-                label: 'Profil',
-              ),
-            ],
-          ),
-        ],
+      bottomNavigationBar: BottomNavUser(
+        currentIndex: 0, // 0 for Beranda
+        cart: _cart,
+        onCheckoutTap: _showCheckout,
+        onNavigate: _onNavigate,
       ),
     );
   }
@@ -507,48 +465,6 @@ class _BerandaPageState extends State<BerandaPage> {
     }
   }
 
-  Widget _buildCheckoutBar() {
-    final int itemCount = _cart.length;
-
-    return GestureDetector(
-      onTap: _showCheckout,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
-        decoration: BoxDecoration(
-          color: const Color(0xFFDD0303),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                const Icon(
-                  Icons.shopping_bag,
-                  color: Colors.white,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Checkout $itemCount menu',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.white,
-              size: 16,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 
   void _onSearchChanged(String query) {
     setState(() {
@@ -608,6 +524,27 @@ class _BerandaPageState extends State<BerandaPage> {
       MaterialPageRoute(
         builder: (context) => CheckoutPage(cart: _cart),
       ),
+    );
+  }
+
+  void _onNavigate(int index) {
+    if (index == 0) return; // Already on beranda
+
+    Widget page;
+    switch (index) {
+      case 1:
+        page = const HistoryPesananPage();
+        break;
+      case 2:
+        page = const ProfilePage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
     );
   }
 }

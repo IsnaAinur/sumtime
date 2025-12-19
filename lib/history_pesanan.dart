@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'rincianpesanan.dart';
+import 'bottom_nav_user.dart';
+import 'beranda.dart';
+import 'profile.dart';
 
 class HistoryPesananPage extends StatefulWidget {
   const HistoryPesananPage({super.key});
@@ -132,6 +135,27 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
     ),
   ];
 
+  void _onNavigate(int index) {
+    if (index == 1) return; // Already on history
+
+    Widget page;
+    switch (index) {
+      case 0:
+        page = const BerandaPage();
+        break;
+      case 2:
+        page = const ProfilePage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final items = selectedTab == 0 ? berlangsung : selesai;
@@ -141,15 +165,7 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-
-        // supaya title ada di samping tombol back
-        centerTitle: false,
-
-        // tombol kembali
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: kRed),
-          onPressed: () => Navigator.maybePop(context),
-        ),
+        automaticallyImplyLeading: false,
 
         // title samping tombol
         title: const Text(
@@ -200,6 +216,10 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
             ],
           ),
         ),
+      ),
+      bottomNavigationBar: BottomNavUser(
+        currentIndex: 1, // 1 for History Pesanan
+        onNavigate: _onNavigate,
       ),
     );
   }

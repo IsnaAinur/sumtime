@@ -5,6 +5,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'login.dart';
+import 'bottom_nav_user.dart';
+import 'beranda.dart';
+import 'history_pesanan.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -208,6 +211,27 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  void _onNavigate(int index) {
+    if (index == 2) return; // Already on profile
+
+    Widget page;
+    switch (index) {
+      case 0:
+        page = const BerandaPage();
+        break;
+      case 1:
+        page = const HistoryPesananPage();
+        break;
+      default:
+        return;
+    }
+
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => page),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,6 +354,10 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: BottomNavUser(
+        currentIndex: 2, // 2 for Profile
+        onNavigate: _onNavigate,
       ),
     );
   }
