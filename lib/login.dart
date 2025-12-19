@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'beranda.dart';
+import 'order_page.dart';
 import 'register.dart';
 
 class LoginPage extends StatefulWidget {
@@ -53,6 +53,16 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),
       );
+
+      // Navigasi ke halaman register setelah delay singkat
+      Future.delayed(const Duration(seconds: 1), () {
+        if (mounted) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const RegisterPage()),
+          );
+        }
+      });
       return;
     }
 
@@ -63,7 +73,7 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Jika valid, pindah ke beranda
+    // Jika valid, tentukan halaman tujuan berdasarkan role
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -72,11 +82,20 @@ class _LoginPageState extends State<LoginPage> {
           duration: Duration(milliseconds: 800),
         ),
       );
-      
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const BerandaPage()),
-      );
+
+      // Cek apakah user adalah admin berdasarkan email
+      final bool isAdmin = email == 'admin@gmail.com';
+
+      if (isAdmin) {
+        // Navigasi ke halaman admin (OrderPage)
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const OrderPage()),
+        );
+      } else {
+        // Navigasi ke halaman user (BerandaPage)
+        Navigator.pushReplacementNamed(context, '/beranda');
+      }
     }
   }
 
@@ -213,7 +232,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       const Text(
                         "Belum punya akun? ",
-                        style: TextStyle(color: onPrimaryColor),
+                        style: TextStyle(color: Colors.white),
                       ),
                       GestureDetector(
                         onTap: () {
@@ -225,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                         child: const Text(
                           "Daftar disini",
                           style: TextStyle(
-                            color: Colors.yellowAccent, 
+                            color: Colors.yellowAccent,
                             fontWeight: FontWeight.bold,
                           ),
                         ),

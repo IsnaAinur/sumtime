@@ -4,7 +4,7 @@ class InfoMenuPage extends StatefulWidget {
   final String namaMenu;
   final String deskripsi;
   final int harga;
-  final String fotoAsset; // bisa berupa asset path atau URL
+  final String fotoAsset;
 
   const InfoMenuPage({
     super.key,
@@ -21,239 +21,143 @@ class InfoMenuPage extends StatefulWidget {
 class _InfoMenuPageState extends State<InfoMenuPage> {
   int jumlah = 1;
 
-  // Helper function untuk format harga dengan pemisah ribuan
-  String _formatPrice(int price) {
-    return price.toString().replaceAllMapped(
-      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
-      (Match m) => '${m[1]}.',
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-
-      // ==================== APP BAR ======================
       appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Color(0xFFDD0303),
-            size: 28,
-          ),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text(
-          "Detail Menu",
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFDD0303),
-          ),
-        ),
+        title: Text(widget.namaMenu),
+        backgroundColor: const Color(0xFFDD0303),
       ),
-
-      // ==================== BODY ======================
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // FOTO MENU
-            Center(
-              child: Container(
-                height: 400,
-                width: 400,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDD0303),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: widget.fotoAsset.startsWith('http')
-                      ? Image.network(
-                          widget.fotoAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey.shade300,
-                              child: const Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                          loadingBuilder: (context, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Center(
-                              child: CircularProgressIndicator(
-                                value: loadingProgress.expectedTotalBytes != null
-                                    ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                    : null,
-                              ),
-                            );
-                          },
-                        )
-                      : Image.asset(
-                          widget.fotoAsset,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: Colors.grey.shade300,
-                              child: const Icon(
-                                Icons.broken_image,
-                                size: 50,
-                                color: Colors.grey,
-                              ),
-                            );
-                          },
-                        ),
-                ),
+            // Gambar menu
+            Container(
+              width: double.infinity,
+              height: 200,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                image: widget.fotoAsset.startsWith('http')
+                    ? DecorationImage(
+                        image: NetworkImage(widget.fotoAsset),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+                color: widget.fotoAsset.startsWith('http') ? null : Colors.grey.shade300,
               ),
+              child: widget.fotoAsset.startsWith('http')
+                  ? null
+                  : const Icon(Icons.image, size: 50, color: Colors.grey),
             ),
+            const SizedBox(height: 16),
 
-            const SizedBox(height: 20),
-
-            // NAMA MENU
+            // Nama menu
             Text(
               widget.namaMenu,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
             ),
+            const SizedBox(height: 8),
 
-            const SizedBox(height: 10),
+            // Harga
+            Text(
+              'Rp ${widget.harga}',
+              style: const TextStyle(
+                fontSize: 20,
+                color: Color(0xFFDD0303),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 16),
 
-            // DESKRIPSI
-            Text(widget.deskripsi, style: const TextStyle(fontSize: 16)),
+            // Deskripsi
+            const Text(
+              'Deskripsi',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.deskripsi,
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
 
-            const SizedBox(height: 30),
-
-            // HARGA + COUNTER
+            // Counter jumlah
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  "Rp ${_formatPrice(widget.harga)}",
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
+                IconButton(
+                  onPressed: () {
+                    if (jumlah > 1) {
+                      setState(() => jumlah--);
+                    }
+                  },
+                  icon: const Icon(Icons.remove),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFDD0303),
+                    foregroundColor: Colors.white,
                   ),
                 ),
-
-                Row(
-                  children: [
-                    // MIN
-                    GestureDetector(
-                      onTap: () {
-                        if (jumlah > 1) {
-                          setState(() {
-                            jumlah--;
-                          });
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black),
-                        ),
-                        child: const Icon(Icons.remove, size: 18),
-                      ),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    // ANGKA
-                    Text(
-                      jumlah.toString(),
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-
-                    const SizedBox(width: 14),
-
-                    // PLUS
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          jumlah++;
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.black),
-                        ),
-                        child: const Icon(Icons.add, size: 18),
-                      ),
-                    ),
-                  ],
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: const Color(0xFFDD0303)),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    jumlah.toString(),
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  onPressed: () {
+                    setState(() => jumlah++);
+                  },
+                  icon: const Icon(Icons.add),
+                  style: IconButton.styleFrom(
+                    backgroundColor: const Color(0xFFDD0303),
+                    foregroundColor: Colors.white,
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+            const SizedBox(height: 24),
 
-      // ==================== BOTTOM BAR ======================
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        height: 90,
-        decoration: BoxDecoration(
-          border: const Border(top: BorderSide(color: Colors.black12)),
-          color: Colors.grey.shade100,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // TOTAL HARGA
-            Text(
-              "Rp ${_formatPrice(widget.harga * jumlah)}",
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-
-            // BUTTON CHECKOUT
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDD0303),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 28,
-                  vertical: 14,
+            // Tombol pesan
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  // Kembali dengan data jumlah pesanan
+                  Navigator.pop(context, {
+                    'name': widget.namaMenu,
+                    'harga': widget.harga,
+                    'image': widget.fotoAsset,
+                    'deskripsi': widget.deskripsi,
+                    'jumlah': jumlah,
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFDD0303),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              onPressed: () {
-                // Format harga dengan format ribuan
-                String formattedPrice = 'Rp ${_formatPrice(widget.harga)}';
-                
-                // Kembalikan data ke beranda dengan jumlah yang dipilih
-                Navigator.pop(context, {
-                  'name': widget.namaMenu,
-                  'price': formattedPrice,
-                  'harga': widget.harga,
-                  'image': widget.fotoAsset,
-                  'deskripsi': widget.deskripsi,
-                  'jumlah': jumlah,
-                });
-              },
-              child: const Text(
-                "CHECKOUT",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+                child: const Text(
+                  'Tambah ke Keranjang',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'rincianpesanan.dart';
 import 'bottom_nav_user.dart';
-import 'beranda.dart';
-import 'profile.dart';
 
 class HistoryPesananPage extends StatefulWidget {
   const HistoryPesananPage({super.key});
@@ -138,22 +136,19 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
   void _onNavigate(int index) {
     if (index == 1) return; // Already on history
 
-    Widget page;
+    String routeName;
     switch (index) {
       case 0:
-        page = const BerandaPage();
+        routeName = '/beranda';
         break;
       case 2:
-        page = const ProfilePage();
+        routeName = '/profile';
         break;
       default:
         return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+    Navigator.pushReplacementNamed(context, routeName);
   }
 
   @override

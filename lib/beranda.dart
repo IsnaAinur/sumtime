@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
 import 'bottom_nav_user.dart';
-import 'history_pesanan.dart';
-import 'profile.dart';
 
 class BerandaPage extends StatefulWidget {
   const BerandaPage({super.key});
@@ -530,21 +528,18 @@ class _BerandaPageState extends State<BerandaPage> {
   void _onNavigate(int index) {
     if (index == 0) return; // Already on beranda
 
-    Widget page;
+    String routeName;
     switch (index) {
       case 1:
-        page = const HistoryPesananPage();
+        routeName = '/history';
         break;
       case 2:
-        page = const ProfilePage();
+        routeName = '/profile';
         break;
       default:
         return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+    Navigator.pushReplacementNamed(context, routeName);
   }
 }

@@ -6,8 +6,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'login.dart';
 import 'bottom_nav_user.dart';
-import 'beranda.dart';
-import 'history_pesanan.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -214,22 +212,19 @@ class _ProfilePageState extends State<ProfilePage> {
   void _onNavigate(int index) {
     if (index == 2) return; // Already on profile
 
-    Widget page;
+    String routeName;
     switch (index) {
       case 0:
-        page = const BerandaPage();
+        routeName = '/beranda';
         break;
       case 1:
-        page = const HistoryPesananPage();
+        routeName = '/history';
         break;
       default:
         return;
     }
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => page),
-    );
+    Navigator.pushReplacementNamed(context, routeName);
   }
 
   @override
