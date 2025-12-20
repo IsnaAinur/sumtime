@@ -4,11 +4,13 @@ import 'detail_laporan.dart';
 
 class ReportItem {
   final int no;
-  final String date;
+  final DateTime date;
   final String orderId;
   final String totalHarga;
 
   ReportItem(this.no, this.date, this.orderId, this.totalHarga);
+
+  String get formattedDate => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
 
 class LaporanPage extends StatefulWidget {
@@ -19,79 +21,186 @@ class LaporanPage extends StatefulWidget {
 }
 
 class _LaporanPageState extends State<LaporanPage> {
-  final int _totalPenjualan = 20;
-  final String _totalPendapatan = 'Rp 300.000';
-  final String _rataRataPendapatan = 'Rp 300.000';
-  
   String? _selectedBulan = 'Bulan';
-  String? _selectedTahun = 'Tahun'; 
+  String? _selectedTahun = 'Tahun';
 
-  final List<ReportItem> _reportData = [
-    ReportItem(1, '22/11', 'ORD-001', 'Rp 50.000'),
-    ReportItem(2, '22/11', 'ORD-002', 'Rp 25.000'),
-    ReportItem(3, '22/11', 'ORD-003', 'Rp 60.000'),
-    ReportItem(4, '22/11', 'ORD-004', 'Rp 30.000'),
+  // All report data
+  final List<ReportItem> _allReportData = [
+    ReportItem(1, DateTime(2024, 11, 22), 'ORD-001', 'Rp 50.000'),
+    ReportItem(2, DateTime(2024, 11, 22), 'ORD-002', 'Rp 25.000'),
+    ReportItem(3, DateTime(2024, 10, 15), 'ORD-003', 'Rp 60.000'),
+    ReportItem(4, DateTime(2024, 10, 10), 'ORD-004', 'Rp 30.000'),
+    ReportItem(5, DateTime(2024, 9, 5), 'ORD-005', 'Rp 45.000'),
+    ReportItem(6, DateTime(2024, 9, 12), 'ORD-006', 'Rp 35.000'),
+    ReportItem(7, DateTime(2025, 1, 8), 'ORD-007', 'Rp 75.000'),
+    ReportItem(8, DateTime(2025, 1, 15), 'ORD-008', 'Rp 40.000'),
+    ReportItem(9, DateTime(2025, 2, 20), 'ORD-009', 'Rp 55.000'),
+    ReportItem(10, DateTime(2025, 2, 25), 'ORD-010', 'Rp 65.000'),
   ];
 
-  void _fetchReportData() {
+  // Filtered data (will be updated based on selected filters)
+  List<ReportItem> _filteredReportData = [];
+
+  int get _totalPenjualan => _filteredReportData.length;
+  String get _totalPendapatan => _calculateTotalPendapatan();
+  String get _rataRataPendapatan => _calculateRataRataPendapatan();
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredReportData = List.from(_allReportData); // Initially show all data
   }
 
+  void _applyFilters() {
+    setState(() {
+      _filteredReportData = _allReportData.where((item) {
+        bool monthMatch = true;
+        bool yearMatch = true;
 
-  // Ringkasan
-  Widget _buildSummaryBox(String title, String value) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 15),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 1.5), 
-        borderRadius: BorderRadius.circular(0), 
-        color: const Color(0xFFF0F0F0),
+        // Filter by month
+        if (_selectedBulan != null && _selectedBulan != 'Bulan') {
+          final months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+                         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+          final selectedMonthIndex = months.indexOf(_selectedBulan!) + 1;
+          monthMatch = item.date.month == selectedMonthIndex;
+        }
+
+        // Filter by year
+        if (_selectedTahun != null && _selectedTahun != 'Tahun') {
+          yearMatch = item.date.year.toString() == _selectedTahun;
+        }
+
+        return monthMatch && yearMatch;
+      }).toList();
+
+      // Update item numbers after filtering
+      for (int i = 0; i < _filteredReportData.length; i++) {
+        _filteredReportData[i] = ReportItem(
+          i + 1,
+          _filteredReportData[i].date,
+          _filteredReportData[i].orderId,
+          _filteredReportData[i].totalHarga,
+        );
+      }
+    });
+  }
+
+  String _calculateTotalPendapatan() {
+    int total = 0;
+    for (var item in _filteredReportData) {
+      // Extract number from string like 'Rp 50.000'
+      final amountString = item.totalHarga.replaceAll('Rp ', '').replaceAll('.', '');
+      final amount = int.tryParse(amountString) ?? 0;
+      total += amount;
+    }
+    return 'Rp ${total.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+  }
+
+  String _calculateRataRataPendapatan() {
+    if (_filteredReportData.isEmpty) return 'Rp 0';
+    final totalAmount = _calculateTotalPendapatan();
+    final totalNumeric = int.parse(totalAmount.replaceAll('Rp ', '').replaceAll('.', ''));
+    final average = totalNumeric ~/ _filteredReportData.length;
+    return 'Rp ${average.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+  }
+
+  // Modern Summary Card
+  Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
+    return Card(
+      elevation: 4,
+      shadowColor: color.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Text(
-              title,
-              style: const TextStyle(fontSize: 16, color: Colors.black),
-            ),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: LinearGradient(
+            colors: [color.withOpacity(0.1), color.withOpacity(0.05)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          Expanded(
-            flex: 3,
-            child: Text(
-              value,
-              textAlign: TextAlign.left,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
             ),
-          ),
-        ],
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: color,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  // Dropdown Filter
-  Widget _buildFilterDropdown(String label, String? selectedValue, List<String> items, Function(String?) onChanged) {
+  // Modern Filter Dropdown
+  Widget _buildModernDropdown(String label, String? selectedValue, List<String> items, Function(String?) onChanged) {
     List<String> displayItems = [label, ...items];
     String? displayValue = selectedValue != null && items.contains(selectedValue) ? selectedValue : label;
 
     return Container(
-      height: 30, 
-      margin: const EdgeInsets.only(right: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      height: 48,
+      margin: const EdgeInsets.only(right: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 1.5), 
-        borderRadius: BorderRadius.circular(5), 
-        color: const Color(0xFFF0F0F0),
+        border: Border.all(color: Colors.grey.shade300, width: 1.5),
+        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade100,
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: displayValue,
-          iconSize: 18,
-          style: const TextStyle(fontSize: 14, color: Colors.black),
+          icon: Icon(Icons.keyboard_arrow_down, color: Colors.grey[600]),
+          iconSize: 24,
+          style: const TextStyle(fontSize: 16, color: Colors.black87, fontWeight: FontWeight.w500),
           items: displayItems.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(
               value: value,
-              child: Text(value),
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: value == label ? Colors.grey[500] : Colors.black87,
+                ),
+              ),
             );
           }).toList(),
           onChanged: (String? newValue) {
@@ -104,137 +213,278 @@ class _LaporanPageState extends State<LaporanPage> {
     );
   }
 
-  // Tabel Laporan
-  Widget _buildReportTable(List<ReportItem> data) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.black, width: 1.5),
+  // Modern Report Table
+  Widget _buildModernReportTable(List<ReportItem> data) {
+    return Card(
+      elevation: 4,
+      shadowColor: Colors.grey.withOpacity(0.3),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Table(
-        columnWidths: const {
-          0: FlexColumnWidth(1.0),
-          1: FlexColumnWidth(2.0),
-          2: FlexColumnWidth(3.0),
-          3: FlexColumnWidth(3.5),
-          4: FlexColumnWidth(3.0), // Kolom Aksi
-        },
-        border: TableBorder.all(color: Colors.black, width: 1.0),
-        children: [
-          const TableRow(
-            decoration: BoxDecoration(color: Color(0xFFD6D0D0)),
-            children: [
-              TableCell(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: Text('No.', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: Text('Tgl', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: Text('ID ORDER', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: Text('Total Harga', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: EdgeInsets.all(8.0), child: Text('Aksi', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black))))),
-            ],
-          ),
-          ...data.map((item) => TableRow(
-            decoration: const BoxDecoration(color: Color(0xFFF0F0F0)),
-            children: [
-              TableCell(child: Center(child: Padding(padding: const EdgeInsets.all(8.0), child: Text(item.no.toString(), style: const TextStyle(color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: const EdgeInsets.all(8.0), child: Text(item.date, style: const TextStyle(color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: const EdgeInsets.all(8.0), child: Text(item.orderId, style: const TextStyle(color: Colors.black))))),
-              TableCell(child: Center(child: Padding(padding: const EdgeInsets.all(8.0), child: Text(item.totalHarga, style: const TextStyle(color: Colors.black))))),
-              TableCell(
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const DetailLaporanPage()),
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFDD0303),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      child: const Text('Detail Laporan'),
-                    ),
-                  ),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFDD0303).withOpacity(0.1),
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
                 ),
               ),
-            ],
-          )),
-        ],
+              child: Text(
+                'Detail Laporan',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFFDD0303),
+                ),
+              ),
+            ),
+
+            // Table Content
+            Container(
+              padding: const EdgeInsets.all(16),
+              child: Table(
+                columnWidths: const {
+                  0: FlexColumnWidth(1.0),
+                  1: FlexColumnWidth(2.0),
+                  2: FlexColumnWidth(3.0),
+                  3: FlexColumnWidth(2.5),
+                  4: FlexColumnWidth(2.5),
+                },
+                border: TableBorder.all(
+                  color: Colors.grey[300]!,
+                  width: 1,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                children: [
+                  // Header Row
+                  TableRow(
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDD0303).withOpacity(0.05),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                        topRight: Radius.circular(8),
+                      ),
+                    ),
+                    children: [
+                      _buildTableHeaderCell('No.'),
+                      _buildTableHeaderCell('Tanggal'),
+                      _buildTableHeaderCell('ID Order'),
+                      _buildTableHeaderCell('Total Harga'),
+                      _buildTableHeaderCell('Aksi'),
+                    ],
+                  ),
+                  // Data Rows
+                  ...data.map((item) => TableRow(
+                    decoration: BoxDecoration(
+                      color: data.indexOf(item) % 2 == 0 ? Colors.white : Colors.grey[50],
+                    ),
+                    children: [
+                      _buildTableDataCell(item.no.toString(), isBold: true),
+                      _buildTableDataCell(item.formattedDate),
+                      _buildTableDataCell(item.orderId, isBold: true),
+                      _buildTableDataCell(item.totalHarga, color: const Color(0xFF10B981), isBold: true),
+                      TableCell(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: ElevatedButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const DetailLaporanPage()),
+                              );
+                            },
+                            child: const Text('Detail'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFDD0303),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              elevation: 1,
+                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  )),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Table Header Cell
+  Widget _buildTableHeaderCell(String text) {
+    return TableCell(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFDD0303),
+            fontSize: 14,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  // Table Data Cell
+  Widget _buildTableDataCell(String text, {bool isBold = false, Color? color}) {
+    return TableCell(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+            color: color ?? Colors.black87,
+          ),
+          textAlign: TextAlign.center,
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    const Color mainBackgroundColor = Color(0xFFDD0303); 
-
     return Scaffold(
-      backgroundColor: mainBackgroundColor, 
-      
-      appBar: AppBar(
-        title: const Text(
-          'DASHBOARD',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, letterSpacing: 1.5),
-        ),
-        centerTitle: true,
-        backgroundColor: mainBackgroundColor,
-        foregroundColor: Colors.white, 
-        elevation: 0, 
-      ),
-      
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0), 
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              children: [
-                _buildFilterDropdown(
-                  'Bulan',
-                  _selectedBulan,
-                  const ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
-                  (String? newValue) {
-                    setState(() {
-                      _selectedBulan = newValue;
-                    });
-                    _fetchReportData();
-                  },
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            // Modern App Bar
+            SliverAppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              pinned: true,
+              automaticallyImplyLeading: false,
+              title: const Text(
+                'Dashboard',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
                 ),
-                _buildFilterDropdown(
-                  'Tahun',
-                  _selectedTahun,
-                  const ['2024', '2025', '2026'],
-                  (String? newValue) {
-                    setState(() {
-                      _selectedTahun = newValue;
-                    });
-                    _fetchReportData();
-                  },
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(80),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  child: Row(
+                    children: [
+                      _buildModernDropdown(
+                        'Bulan',
+                        _selectedBulan,
+                        const ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+                        (String? newValue) {
+                          setState(() {
+                            _selectedBulan = newValue;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                      _buildModernDropdown(
+                        'Tahun',
+                        _selectedTahun,
+                        const ['2024', '2025', '2026'],
+                        (String? newValue) {
+                          setState(() {
+                            _selectedTahun = newValue;
+                          });
+                          _applyFilters();
+                        },
+                      ),
+                      // Reset Filter Button
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _selectedBulan = 'Bulan';
+                            _selectedTahun = 'Tahun';
+                            _applyFilters();
+                          });
+                        },
+                        icon: const Icon(Icons.refresh, size: 18),
+                        label: const Text('Reset'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.grey[600],
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ],
+              ),
             ),
-            
-            const SizedBox(height: 15),
 
-            _buildSummaryBox('Total penjualan', '$_totalPenjualan'),
-            _buildSummaryBox('Total pendapatan', _totalPendapatan),
-            _buildSummaryBox('Rata-rata pendapatan', _rataRataPendapatan),
+            // Content
+            SliverPadding(
+              padding: const EdgeInsets.all(20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Summary Cards Grid
+                  GridView.count(
+                    crossAxisCount: 1,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 3.5,
+                    mainAxisSpacing: 16,
+                    children: [
+                      _buildSummaryCard(
+                        'Total Penjualan',
+                        '$_totalPenjualan',
+                        Icons.shopping_cart,
+                        const Color(0xFFDD0303),
+                      ),
+                      _buildSummaryCard(
+                        'Total Pendapatan',
+                        _totalPendapatan,
+                        Icons.attach_money,
+                        const Color(0xFF10B981),
+                      ),
+                      _buildSummaryCard(
+                        'Rata-rata Pendapatan',
+                        _rataRataPendapatan,
+                        Icons.trending_up,
+                        const Color(0xFFF59E0B),
+                      ),
+                    ],
+                  ),
 
-            const SizedBox(height: 25),
+                  const SizedBox(height: 32),
 
-            const Text(
-              'LAPORAN',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                  // Report Table
+                  _buildModernReportTable(_filteredReportData),
+                ]),
+              ),
             ),
-            const SizedBox(height: 10),
-
-            _buildReportTable(_reportData),
           ],
         ),
       ),
-
       bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
     );
   }
