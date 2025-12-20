@@ -1,7 +1,18 @@
 import 'package:flutter/material.dart';
 
 class PemesananPage extends StatefulWidget {
-  const PemesananPage({super.key});
+  final List<Map<String, dynamic>> orderItems;
+  final int shippingCost;
+  final String orderNumber;
+  final int currentStatus;
+
+  const PemesananPage({
+    super.key,
+    required this.orderItems,
+    required this.shippingCost,
+    required this.orderNumber,
+    required this.currentStatus,
+  });
 
   @override
   State<PemesananPage> createState() => _PemesananPageState();
@@ -10,13 +21,7 @@ class PemesananPage extends StatefulWidget {
 class _PemesananPageState extends State<PemesananPage> {
   static const Color primaryColor = Color(0xFFDD0303);
   static const Color accentColor = Colors.black;
-  static const Color cardColor = Colors.white; 
-
-  final String orderId = 'ORD-001';
-  final String deliveryFee = '6.000';
-  final String totalCost = '40.000';
-
-  int currentStatusIndex = 0;
+  static const Color cardColor = Colors.white;
 
   final List<Map<String, dynamic>> statusData = [
     {'title': 'ORDER', 'icon': Icons.list_alt},
@@ -25,21 +30,31 @@ class _PemesananPageState extends State<PemesananPage> {
     {'title': 'TIBA', 'icon': Icons.check_circle},
   ];
 
-  final List<Map<String, dynamic>> items = [
-    {'name': 'Dimsum Ayam', 'price': 'Rp 15.000', 'quantity': 2},
-    {'name': 'Es Teh', 'price': 'Rp 4.000', 'quantity': 1},
-  ];
+  // Calculate total price from order items
+  int getTotalPrice() {
+    int total = 0;
+    for (var item in widget.orderItems) {
+      total += (item['harga'] as int) * (item['quantity'] as int);
+    }
+    return total + widget.shippingCost;
+  }
+
+  // Format currency helper
+  String _formatCurrency(int amount) {
+    return amount.toString().replaceAllMapped(
+      RegExp(r'(\d)(?=(\d{3})+(?!\d))'),
+      (match) => '${match[1]}.',
+    );
+  }
 
 
   // Update Status
   void _updateStatus(int targetIndex) {
-    if (targetIndex == currentStatusIndex + 1) {
-      setState(() {
-        currentStatusIndex = targetIndex;
-      });
+    if (targetIndex == widget.currentStatus + 1) {
+      // Note: In a real app, this would update the status in a backend/database
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Status berhasil diperbarui menjadi: ${statusData[currentStatusIndex]['title']}'),
+          content: Text('Status berhasil diperbarui menjadi: ${statusData[targetIndex]['title']}'),
           duration: const Duration(seconds: 1),
           backgroundColor: Colors.green,
         ),
@@ -49,9 +64,9 @@ class _PemesananPageState extends State<PemesananPage> {
 
   // Tahapan Proses
   Widget _buildProcessStepWithButton(Map<String, dynamic> data, int index) {
-    bool isActive = index <= currentStatusIndex;
+    bool isActive = index <= widget.currentStatus;
     Color color = isActive ? Colors.white : Colors.white70;
-    const double buttonAreaHeight = 40; 
+    const double buttonAreaHeight = 40;
 
     return Column(
       children: [
@@ -60,7 +75,7 @@ class _PemesananPageState extends State<PemesananPage> {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             border: Border.all(color: color, width: 2),
-            color: isActive ? Colors.white.withAlpha(51) : Colors.transparent, 
+            color: isActive ? Colors.white.withAlpha(51) : Colors.transparent,
           ),
           child: Icon(
             data['icon'] as IconData,
@@ -78,12 +93,12 @@ class _PemesananPageState extends State<PemesananPage> {
 
         // Tombol update
         SizedBox(
-          height: buttonAreaHeight, 
-          child: index == currentStatusIndex + 1
+          height: buttonAreaHeight,
+          child: index == widget.currentStatus + 1
             ? OutlinedButton(
                 onPressed: () => _updateStatus(index),
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white, 
+                  foregroundColor: Colors.white,
                   side: const BorderSide(color: Colors.white, width: 1.5),
                   padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
@@ -147,11 +162,11 @@ class _PemesananPageState extends State<PemesananPage> {
     for (int i = 0; i < statusData.length; i++) {
       timelineWidgets.add(_buildProcessStepWithButton(statusData[i], i));
       if (i < statusData.length - 1) {
-        bool isActiveLine = i < currentStatusIndex; 
+        bool isActiveLine = i < widget.currentStatus;
         Color lineColor = isActiveLine ? Colors.white : Colors.white70;
 
         timelineWidgets.add(
-          Expanded( 
+          Expanded(
             child: Container(
               height: 2,
               color: lineColor,
@@ -198,7 +213,7 @@ class _PemesananPageState extends State<PemesananPage> {
                   const Text('Order ID:', style: TextStyle(fontSize: 16, color: Colors.white, fontWeight: FontWeight.bold,)),
                   Expanded(
                     child: Text(
-                      ' $orderId',
+                      ' ${widget.orderNumber}',
                       style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -250,7 +265,7 @@ class _PemesananPageState extends State<PemesananPage> {
                             const Divider(height: 20, thickness: 1.5, color: Color(0xFFEEEEEE)),
                             
                             // Daftar Item Pesanan
-                            ...items.map((item) { 
+                            ...widget.orderItems.map((item) {
                               return _buildOrderItem(item['name'] as String, item['price'] as String, item['quantity'] as int);
                             }),
                           ],
@@ -281,7 +296,7 @@ class _PemesananPageState extends State<PemesananPage> {
                       children: [
                         const Text('Biaya Pengiriman', style: TextStyle(fontSize: 16, color: accentColor)),
                         Text(
-                          'Rp $deliveryFee',
+                          'Rp ${_formatCurrency(widget.shippingCost)}',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: accentColor)
                         ),
                       ],
@@ -299,7 +314,7 @@ class _PemesananPageState extends State<PemesananPage> {
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: Text(
-                        'Rp $totalCost',
+                        'Rp ${_formatCurrency(getTotalPrice())}',
                         textAlign: TextAlign.center,
                         style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: primaryColor),
                       ),
@@ -316,7 +331,7 @@ class _PemesananPageState extends State<PemesananPage> {
                         ElevatedButton(
                           onPressed: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Pesanan $orderId telah diselesaikan.')),
+                              SnackBar(content: Text('Pesanan ${widget.orderNumber} telah diselesaikan.')),
                             );
                           },
                           style: ElevatedButton.styleFrom(
