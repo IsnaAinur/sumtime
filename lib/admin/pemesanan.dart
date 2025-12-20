@@ -23,12 +23,20 @@ class _PemesananPageState extends State<PemesananPage> {
   static const Color accentColor = Colors.black;
   static const Color cardColor = Colors.white;
 
+  late int currentStatusIndex; // State lokal untuk status saat ini
+
   final List<Map<String, dynamic>> statusData = [
     {'title': 'ORDER', 'icon': Icons.list_alt},
     {'title': 'PROSES', 'icon': Icons.hourglass_bottom},
     {'title': 'KIRIM', 'icon': Icons.local_shipping},
     {'title': 'TIBA', 'icon': Icons.check_circle},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    currentStatusIndex = widget.currentStatus; // Initialize dengan status dari widget
+  }
 
   // Calculate total price from order items
   int getTotalPrice() {
@@ -48,23 +56,26 @@ class _PemesananPageState extends State<PemesananPage> {
   }
 
 
-  // Update Status
+  // Update Status - bisa update ke step manapun
   void _updateStatus(int targetIndex) {
-    if (targetIndex == widget.currentStatus + 1) {
-      // Note: In a real app, this would update the status in a backend/database
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Status berhasil diperbarui menjadi: ${statusData[targetIndex]['title']}'),
-          duration: const Duration(seconds: 1),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+    setState(() {
+      currentStatusIndex = targetIndex; // Update status lokal
+    });
+
+    // Note: In a real app, this would update the status in a backend/database
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Status berhasil diperbarui menjadi: ${statusData[targetIndex]['title']}'),
+        duration: const Duration(seconds: 1),
+        backgroundColor: Colors.green,
+      ),
+    );
+    // Dalam implementasi nyata, status akan disimpan ke backend/database
   }
 
   // Tahapan Proses
   Widget _buildProcessStepWithButton(Map<String, dynamic> data, int index) {
-    bool isActive = index <= widget.currentStatus;
+    bool isActive = index <= currentStatusIndex;
     Color color = isActive ? Colors.white : Colors.white70;
     const double buttonAreaHeight = 40;
 
@@ -91,21 +102,19 @@ class _PemesananPageState extends State<PemesananPage> {
         ),
         const SizedBox(height: 8),
 
-        // Tombol update
+        // Tombol update - muncul untuk semua step
         SizedBox(
           height: buttonAreaHeight,
-          child: index == widget.currentStatus + 1
-            ? OutlinedButton(
-                onPressed: () => _updateStatus(index),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  side: const BorderSide(color: Colors.white, width: 1.5),
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
-                child: const Text('UPDATE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
-              )
-            : const SizedBox(),
+          child: OutlinedButton(
+            onPressed: () => _updateStatus(index),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.white, width: 1.5),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('UPDATE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold)),
+          ),
         ),
       ],
     );
@@ -162,7 +171,7 @@ class _PemesananPageState extends State<PemesananPage> {
     for (int i = 0; i < statusData.length; i++) {
       timelineWidgets.add(_buildProcessStepWithButton(statusData[i], i));
       if (i < statusData.length - 1) {
-        bool isActiveLine = i < widget.currentStatus;
+        bool isActiveLine = i < currentStatusIndex;
         Color lineColor = isActiveLine ? Colors.white : Colors.white70;
 
         timelineWidgets.add(
@@ -251,7 +260,72 @@ class _PemesananPageState extends State<PemesananPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    
+                    // Informasi Pengiriman
+                    Card(
+                      elevation: 3,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      child: Padding(
+                        padding: const EdgeInsets.all(15.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Informasi Pengiriman', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                            const Divider(height: 20, thickness: 1.5, color: Color(0xFFEEEEEE)),
+                            const SizedBox(height: 10),
+
+                            // Lokasi Pengiriman
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, color: primaryColor, size: 20),
+                                const SizedBox(width: 10),
+                                const Text('Lokasi Pengiriman:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: accentColor)),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: const Text(
+                                'Jl. Contoh No. 123, Kelurahan ABC, Kecamatan XYZ, Kota Jakarta',
+                                style: TextStyle(fontSize: 14, color: accentColor),
+                              ),
+                            ),
+
+                            const SizedBox(height: 15),
+
+                            // No HP
+                            Row(
+                              children: [
+                                const Icon(Icons.phone, color: primaryColor, size: 20),
+                                const SizedBox(width: 10),
+                                const Text('No HP:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: accentColor)),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(8),
+                                color: Colors.grey.shade50,
+                              ),
+                              child: const Text(
+                                '0812-3456-7890',
+                                style: TextStyle(fontSize: 14, color: accentColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
                     // Detail Pesanan
                     Card(
                       elevation: 3,
@@ -330,6 +404,8 @@ class _PemesananPageState extends State<PemesananPage> {
                       children: [
                         ElevatedButton(
                           onPressed: () {
+                            // Kembali ke halaman order_page (beranda admin)
+                            Navigator.of(context).pop();
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('Pesanan ${widget.orderNumber} telah diselesaikan.')),
                             );
