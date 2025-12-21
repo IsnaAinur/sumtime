@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'services/supabase_service.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
 
@@ -17,37 +18,10 @@ class _BerandaPageState extends State<BerandaPage> {
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
   final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
 
-  // Sample data for products
-  final List<Map<String, dynamic>> _allProducts = [
-    {
-      'name': 'Dimsum Ayam',
-      'price': 'Rp 25.000',
-      'harga': 25000,
-      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
-      'deskripsi': 'Dimsum ayam yang lezat dengan isian daging ayam pilihan, dibungkus dengan kulit yang tipis dan lembut. Dimasak dengan teknik steaming yang sempurna untuk menghasilkan tekstur yang kenyal dan rasa yang gurih.',
-    },
-    {
-      'name': 'Dimsum Udang',
-      'price': 'Rp 28.000',
-      'harga': 28000,
-      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
-      'deskripsi': 'Dimsum udang premium dengan isian udang segar yang melimpah. Dibuat dengan resep tradisional yang menghasilkan cita rasa yang autentik dan nikmat.',
-    },
-    {
-      'name': 'Es Jeruk',
-      'price': 'Rp 15.000',
-      'harga': 15000,
-      'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
-      'deskripsi': 'Es jeruk segar yang menyegarkan, dibuat dari jeruk peras asli tanpa pengawet. Sempurna untuk menemani hidangan dimsum Anda.',
-    },
-    {
-      'name': 'Es Teh',
-      'price': 'Rp 12.000',
-      'harga': 12000,
-      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',
-      'deskripsi': 'Es teh manis yang segar, dibuat dari teh pilihan dengan takaran gula yang pas. Minuman klasik yang selalu cocok untuk segala suasana.',
-    },
-  ];
+  // Products loaded from database
+  List<Map<String, dynamic>> _allProducts = [];
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoading = true;
 
   // List produk yang akan ditampilkan (hasil filter)
   late List<Map<String, dynamic>> _filteredProducts;
@@ -55,7 +29,38 @@ class _BerandaPageState extends State<BerandaPage> {
   @override
   void initState() {
     super.initState();
-    _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    try {
+      final supabaseService = SupabaseService();
+
+      // Load products dan categories secara paralel
+      final results = await Future.wait([
+        supabaseService.getProducts(),
+        supabaseService.getCategories(),
+      ]);
+
+      setState(() {
+        _allProducts = results[0] as List<Map<String, dynamic>>;
+        _categories = results[1] as List<Map<String, dynamic>>;
+        _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal memuat data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -141,7 +146,17 @@ class _BerandaPageState extends State<BerandaPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (!_isSearching) ...[
+                      if (_isLoading) ...[
+                        // Loading indicator
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40.0),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFDD0303),
+                            ),
+                          ),
+                        ),
+                      ] else if (!_isSearching) ...[
                         // Poster Section
                         Container(
                           width: double.infinity,
@@ -195,32 +210,60 @@ class _BerandaPageState extends State<BerandaPage> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        Row(
+                        Wrap(
+                          spacing: 12,
+                          runSpacing: 12,
                           children: [
+                            // Semua category button
                             Expanded(
                               child: _buildCategoryButton(
-                                'Dimsum',
-                                Icons.restaurant,
-                                isSelected: _selectedCategory == 'Dimsum',
-                                onTap: () => _onCategorySelected('Dimsum'),
+                                'Semua',
+                                Icons.all_inclusive,
+                                isSelected: _selectedCategory == 'Semua',
+                                onTap: () => _onCategorySelected('Semua'),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildCategoryButton(
-                                'Minuman',
-                                Icons.local_drink,
-                                isSelected: _selectedCategory == 'Minuman',
-                                onTap: () => _onCategorySelected('Minuman'),
-                              ),
-                            ),
+                            // Dynamic category buttons dari database
+                            ..._categories.map((category) {
+                              final categoryName = category['name'] as String;
+                              IconData iconData;
+                              switch (categoryName.toLowerCase()) {
+                                case 'dimsum':
+                                  iconData = Icons.restaurant;
+                                  break;
+                                case 'minuman':
+                                  iconData = Icons.local_drink;
+                                  break;
+                                default:
+                                  iconData = Icons.category;
+                              }
+
+                              return Expanded(
+                                child: _buildCategoryButton(
+                                  categoryName,
+                                  iconData,
+                                  isSelected: _selectedCategory == categoryName,
+                                  onTap: () => _onCategorySelected(categoryName),
+                                ),
+                              );
+                            }).toList(),
                           ],
                         ),
                         const SizedBox(height: 24),
                       ],
                       
                       // Product Grid
-                      GridView.builder(
+                      if (_isLoading) ...[
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40.0),
+                            child: CircularProgressIndicator(
+                              color: Color(0xFFDD0303),
+                            ),
+                          ),
+                        ),
+                      ] else ...[
+                        GridView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
                         gridDelegate:
@@ -235,7 +278,7 @@ class _BerandaPageState extends State<BerandaPage> {
                           return _buildProductCard(_filteredProducts[index]);
                         },
                       ),
-
+                      ],
                       const SizedBox(height: 16),
                     ],
                   ),
@@ -359,9 +402,9 @@ class _BerandaPageState extends State<BerandaPage> {
                   topLeft: Radius.circular(12),
                   topRight: Radius.circular(12),
                 ),
-                child: product['image'] != null && product['image'].toString().startsWith('http')
+                child: product['image_url'] != null && product['image_url'].toString().startsWith('http')
                     ? Image.network(
-                        product['image'],
+                        product['image_url'],
                         fit: BoxFit.cover,
                         width: double.infinity,
                         height: double.infinity,
@@ -410,7 +453,7 @@ class _BerandaPageState extends State<BerandaPage> {
                 const SizedBox(height: 4),
                 // Price
                 Text(
-                  product['price'] ?? 'Harga',
+                  _formatPrice(product['price'] ?? 0),
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade700,
@@ -463,7 +506,7 @@ class _BerandaPageState extends State<BerandaPage> {
           namaMenu: product['name'] ?? 'Menu',
           deskripsi: product['deskripsi'] ?? 'Deskripsi menu tidak tersedia.',
           harga: product['harga'] ?? 0,
-          fotoAsset: product['image'] ?? '',
+          fotoAsset: product['image_url'] ?? '',
         ),
       ),
     );
@@ -475,7 +518,7 @@ class _BerandaPageState extends State<BerandaPage> {
         'name': result['name'],
         'price': result['price'],
         'harga': result['harga'],
-        'image': result['image'],
+        'image_url': result['image_url'],
         'deskripsi': result['deskripsi'],
       };
 
@@ -563,17 +606,18 @@ class _BerandaPageState extends State<BerandaPage> {
     Iterable<Map<String, dynamic>> products = _allProducts;
 
     // Filter berdasarkan kategori
-    if (_selectedCategory == 'Dimsum') {
-      products = products.where((product) {
-        final name = (product['name'] ?? '').toString().toLowerCase();
-        return name.contains('dimsum');
-      });
-    } else if (_selectedCategory == 'Minuman') {
-      products = products.where((product) {
-        final name = (product['name'] ?? '').toString().toLowerCase();
-        // Di data sekarang, minuman adalah yang diawali "Es"
-        return name.startsWith('es ');
-      });
+    if (_selectedCategory != 'Semua') {
+      final selectedCategoryData = _categories.firstWhere(
+        (cat) => cat['name'] == _selectedCategory,
+        orElse: () => <String, dynamic>{},
+      );
+
+      if (selectedCategoryData.isNotEmpty) {
+        final categoryId = selectedCategoryData['id'];
+        products = products.where((product) {
+          return product['category_id'] == categoryId;
+        });
+      }
     }
 
     // Filter berdasarkan pencarian
@@ -601,5 +645,12 @@ class _BerandaPageState extends State<BerandaPage> {
         builder: (context) => CheckoutPage(cart: _cart),
       ),
     );
+  }
+
+  String _formatPrice(int price) {
+    return 'Rp ${price.toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    )}';
   }
 }

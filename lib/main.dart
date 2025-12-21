@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'supabase_config.dart';
 import 'splash.dart';
 import 'login.dart';
 import 'register.dart';
@@ -8,6 +9,7 @@ import 'profile.dart';
 import 'info_menu.dart';
 import 'history_pemesanan.dart';
 import 'rincianpesanan.dart';
+import 'test_supabase_connection.dart';
 import 'admin/order_page.dart' as admin_order;
 import 'admin/laporan.dart' as admin_laporan;
 import 'admin/detail_laporan.dart' as admin_detail_laporan;
@@ -16,7 +18,12 @@ import 'admin/add_item_main.dart' as admin_add_item;
 import 'admin/add_item_poster.dart' as admin_add_poster;
 import 'admin/tambah_item_menu.dart' as admin_tambah_menu;
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi Supabase
+  await SupabaseConfig.initialize();
+
   runApp(const SumTimeApp());
 }
 
@@ -38,6 +45,7 @@ class SumTimeApp extends StatelessWidget {
         '/': (context) => const SplashPage(),
         '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
+        '/test-connection': (context) => const TestSupabaseConnection(),
 
         // User routes
         '/home': (context) => const BerandaPage(),

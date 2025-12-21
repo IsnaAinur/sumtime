@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'supabase_config.dart';
+import 'services/supabase_service.dart';
 import 'beranda.dart';
 import 'admin/order_page.dart' as admin_order;
 import 'register.dart';
@@ -25,13 +26,6 @@ class _LoginPageState extends State<LoginPage> {
     return Color(int.parse(hexColor, radix: 16));
   }
 
-  // Fungsi untuk menentukan role berdasarkan email
-  bool _isAdmin(String email) {
-    // Admin jika email mengandung 'admin' atau email admin khusus
-    return email.toLowerCase().contains('admin') ||
-           email.toLowerCase() == 'admin@sumtime.com' ||
-           email.toLowerCase() == 'administrator@gmail.com';
-  }
 
   Future<void> _validateLogin() async {
     String email = emailController.text.trim();
@@ -44,71 +38,70 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    if (!email.endsWith('@gmail.com')) {
+    if (!email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gunakan email yang valid!")),
       );
       return;
     }
 
-    // Validasi dari SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-    final savedPassword = prefs.getString('password');
+    try {
+      // Login menggunakan Supabase
+      final supabaseService = SupabaseService();
+      final response = await supabaseService.signIn(email, password);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (savedEmail == null || savedPassword == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),
-      );
+      if (response.user != null) {
+        // Cek role user dari database
+        final userData = await SupabaseConfig.client
+            .from('users')
+            .select('role')
+            .eq('id', response.user!.id)
+            .single();
 
-      // Navigasi ke halaman register setelah delay singkat
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.push(
+        final bool isAdmin = userData['role'] == 'admin';
+        final String roleMessage = isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!";
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(roleMessage),
+            backgroundColor: Colors.green,
+            duration: const Duration(milliseconds: 800),
+          ),
+        );
+
+        // Navigasi berdasarkan role
+        if (isAdmin) {
+          // Admin navigasi ke halaman admin order
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => const RegisterPage()),
+            MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
+          );
+        } else {
+          // User navigasi ke halaman beranda user
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const BerandaPage()),
           );
         }
-      });
-      return;
-    }
+      }
+    } catch (e) {
+      if (!mounted) return;
 
-    if (savedEmail != email || savedPassword != password) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email atau password salah!")),
-      );
-      return;
-    }
-
-    // Jika valid, pindah ke halaman sesuai role
-    if (mounted) {
-      final bool isAdmin = _isAdmin(email);
-      final String roleMessage = isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!";
+      String errorMessage = "Terjadi kesalahan saat login";
+      if (e.toString().contains('Invalid login credentials')) {
+        errorMessage = "Email atau password salah!";
+      } else if (e.toString().contains('Email not confirmed')) {
+        errorMessage = "Silakan konfirmasi email Anda terlebih dahulu";
+      }
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(roleMessage),
-          backgroundColor: Colors.green,
-          duration: const Duration(milliseconds: 800),
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
         ),
       );
-
-      // Navigasi berdasarkan role
-      if (isAdmin) {
-        // Admin navigasi ke halaman admin order
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
-        );
-      } else {
-        // User navigasi ke halaman beranda user
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const BerandaPage()),
-        );
-      }
     }
   }
 

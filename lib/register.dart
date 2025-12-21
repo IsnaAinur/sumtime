@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'services/supabase_service.dart';
+import 'login.dart';
 import 'beranda.dart';
 import 'admin/order_page.dart' as admin_order;
 
@@ -37,58 +38,72 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    if (!email.endsWith('@gmail.com')) {
+    if (!email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Gunakan email yang valid!")),
       );
       return;
     }
 
-    // Cek apakah email sudah terdaftar
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-    
-    if (!mounted) return;
-    
-    if (savedEmail != null && savedEmail == email) {
+    if (password.length < 6) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email sudah terdaftar!")),
+        const SnackBar(content: Text("Password minimal 6 karakter!")),
       );
       return;
     }
 
-    // Simpan data ke SharedPreferences
-    await prefs.setString('username', username);
-    await prefs.setString('email', email);
-    await prefs.setString('password', password);
+    try {
+      // Register menggunakan Supabase
+      final supabaseService = SupabaseService();
+      final response = await supabaseService.signUp(email, password, username);
 
-    // Tampilkan pesan sukses
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Registrasi berhasil!"),
-          backgroundColor: Colors.green,
-        ),
-      );
-    }
+      if (!mounted) return;
 
-    // Jika valid, pindah ke halaman sesuai role
-    if (mounted) {
-      final bool isAdmin = _isAdmin(email);
-
-      if (isAdmin) {
-        // Admin navigasi ke halaman admin order
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
+      if (response.user != null) {
+        // Tampilkan pesan sukses
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Registrasi berhasil! Anda dapat login sekarang."),
+            backgroundColor: Colors.green,
+          ),
         );
-      } else {
-        // User navigasi ke halaman beranda user
+
+        // Tunggu sebentar untuk user melihat pesan sukses
+        await Future.delayed(const Duration(seconds: 2));
+
+        // Navigate kembali ke login page
+        if (!mounted) return;
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const BerandaPage()),
+          MaterialPageRoute(builder: (context) => const LoginPage()),
         );
       }
+    } catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = "Terjadi kesalahan saat registrasi";
+
+      final errorString = e.toString().toLowerCase();
+      if (errorString.contains('user already registered') ||
+          errorString.contains('already been registered')) {
+        errorMessage = "Email sudah terdaftar! Silakan gunakan email lain.";
+      } else if (errorString.contains('password') ||
+                 errorString.contains('weak')) {
+        errorMessage = "Password terlalu lemah. Gunakan kombinasi huruf dan angka.";
+      } else if (errorString.contains('invalid email')) {
+        errorMessage = "Format email tidak valid.";
+      } else if (errorString.contains('network') ||
+                 errorString.contains('connection')) {
+        errorMessage = "Masalah koneksi internet. Periksa koneksi Anda.";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
     }
   }
 
