@@ -1,95 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../../../login.dart';
-import 'pemesanan.dart';
-import 'nav._bottom.dart';
+import 'rincianpesanan.dart';
 
-class OrderPage extends StatefulWidget {
-  const OrderPage({super.key});
+class HistoryPesananPage extends StatefulWidget {
+  const HistoryPesananPage({super.key});
 
   @override
-  State<OrderPage> createState() => _OrderPageState();
+  State<HistoryPesananPage> createState() => _HistoryPesananPageState();
 }
 
-class _OrderPageState extends State<OrderPage> {
+class _HistoryPesananPageState extends State<HistoryPesananPage> {
   static const Color kRed = Color(0xFFDD0303);
 
   int selectedTab = 0; // 0: Berlangsung, 1: Selesai
-
-  // Method untuk mengubah status pesanan
-  void _updateOrderStatus(String orderId, int newStatus) {
-    setState(() {
-      // Update status di data berlangsung
-      for (var item in berlangsung) {
-        if (item.orderId == orderId) {
-          // Buat item baru dengan status yang diperbarui
-          final updatedItem = OrderItem(
-            orderId: item.orderId,
-            priceText: item.priceText,
-            orderItems: item.orderItems,
-            shippingCost: item.shippingCost,
-            orderDate: item.orderDate,
-            status: newStatus,
-          );
-          berlangsung[berlangsung.indexOf(item)] = updatedItem;
-          break;
-        }
-      }
-    });
-  }
-
-  // Method untuk menampilkan dialog logout
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text(
-            'Konfirmasi Logout',
-            style: TextStyle(
-              color: Color(0xFFDD0303),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          content: const Text(
-            'Apakah Anda yakin ingin logout?',
-            style: TextStyle(fontSize: 16),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Tutup dialog
-              },
-              child: const Text(
-                'Batal',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                Navigator.of(context).pop(); // Tutup dialog
-
-                // Clear session data
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-
-                // Navigate ke halaman login
-                if (!mounted) return;
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(builder: (context) => const LoginPage()),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDD0303),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+  int _currentIndex = 1; // Bottom nav index, 1 = History
 
   // Data pesanan berlangsung (status 0-2)
   final List<OrderItem> berlangsung = [
@@ -219,31 +142,27 @@ class _OrderPageState extends State<OrderPage> {
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-        title: const Text(
-          'Order Page',
-          style: TextStyle(
-            color: kRed,
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
-          ),
+
+        // supaya title ada di samping tombol back
+        centerTitle: false,
+
+        // tombol kembali
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: kRed),
+          onPressed: () => Navigator.maybePop(context),
         ),
-        actions: [
-          IconButton(
-            onPressed: () => _showLogoutDialog(context),
-            icon: const Icon(
-              Icons.logout,
-              color: kRed,
-            ),
-            tooltip: 'Logout',
-          ),
-        ],
+
+        // title samping tombol
+        title: const Text(
+          'History Pesanan',
+          style: TextStyle(color: kRed, fontWeight: FontWeight.w800),
+        ),
       ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              const SizedBox(height: 16),
               _Tabs(
                 red: kRed,
                 selectedIndex: selectedTab,
@@ -260,39 +179,16 @@ class _OrderPageState extends State<OrderPage> {
                       red: kRed,
                       orderId: it.orderId,
                       priceText: it.priceText,
-                      status: it.status,
-                      onAccept: () {
-                        // Logika untuk menerima pesanan - bisa menyesuaikan berdasarkan status saat ini
-                        String message;
-                        if (it.status == 0) {
-                          _updateOrderStatus(it.orderId, 1);
-                          message = 'Pesanan ${it.orderId} diterima dan sedang diproses!';
-                        } else if (it.status == 1) {
-                          _updateOrderStatus(it.orderId, 2);
-                          message = 'Pesanan ${it.orderId} siap untuk pengantaran!';
-                        } else if (it.status == 2) {
-                          _updateOrderStatus(it.orderId, 3);
-                          message = 'Pesanan ${it.orderId} telah selesai!';
-                        } else {
-                          message = 'Pesanan ${it.orderId} sudah selesai!';
-                        }
-
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(message),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
                       onTap: () {
-                        // Navigasi ke halaman pemesanan dengan data lengkap
+                        // Navigasi ke halaman rincian pesanan dengan data lengkap
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => PemesananPage(
+                            builder: (context) => RincianPesananPage(
                               orderItems: it.orderItems,
                               shippingCost: it.shippingCost,
                               orderNumber: it.orderId,
+                              orderDate: it.orderDate,
                               currentStatus: it.status,
                             ),
                           ),
@@ -306,8 +202,38 @@ class _OrderPageState extends State<OrderPage> {
           ),
         ),
       ),
-
-      bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          if (index == 0) {
+            // Navigasi ke halaman beranda
+            Navigator.pushReplacementNamed(context, '/home');
+          } else if (index == 2) {
+            // Navigasi ke halaman profil
+            Navigator.pushNamed(context, '/profile');
+          } else {
+            setState(() {
+              _currentIndex = index;
+            });
+          }
+        },
+        selectedItemColor: kRed,
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Beranda',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.history),
+            label: 'Riwayat Pesanan',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profil',
+          ),
+        ],
+      ),
     );
   }
 }
@@ -403,17 +329,13 @@ class _OrderCard extends StatelessWidget {
   final Color red;
   final String orderId;
   final String priceText;
-  final int status;
   final VoidCallback? onTap;
-  final VoidCallback? onAccept;
 
   const _OrderCard({
     required this.red,
     required this.orderId,
     required this.priceText,
-    required this.status,
     this.onTap,
-    this.onAccept,
   });
 
   @override
@@ -426,100 +348,39 @@ class _OrderCard extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Order ID',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.95),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    orderId,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'Rp. $priceText'.replaceFirst('Rp. Rp.', 'Rp. '),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              Text(
+                'Order ID',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.95),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
-              // Tombol berdasarkan status
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: _buildStatusButton(),
+              const SizedBox(height: 4),
+              Text(
+                orderId,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'Rp. $priceText'.replaceFirst('Rp. Rp.', 'Rp. '),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
         ),
       ),
     );
-  }
-
-  Widget _buildStatusButton() {
-    if (status == 0) {
-      // Status 0: Tombol "Terima" (aktif)
-      return ElevatedButton(
-        onPressed: onAccept,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: red,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 2,
-        ),
-        child: const Text(
-          'Terima',
-          style: TextStyle(
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-    } else {
-      // Status >= 1: Tombol "Sedang berlangsung" (disabled)
-      return ElevatedButton(
-        onPressed: null, // Disabled button
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 6,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 1,
-        ),
-        child: const Text(
-          'Sedang berlangsung',
-          style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
-    }
   }
 }
 

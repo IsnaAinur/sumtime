@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'order_page.dart';
+import 'beranda.dart';
+import 'admin/order_page.dart' as admin_order;
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -15,6 +16,14 @@ class _RegisterPageState extends State<RegisterPage> {
   final passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+
+  // Fungsi untuk menentukan role berdasarkan email
+  bool _isAdmin(String email) {
+    // Admin jika email mengandung 'admin' atau email admin khusus
+    return email.toLowerCase().contains('admin') ||
+           email.toLowerCase() == 'admin@sumtime.com' ||
+           email.toLowerCase() == 'administrator@gmail.com';
+  }
 
   Future<void> _validateRegister() async {
     String username = usernameController.text.trim();
@@ -63,12 +72,23 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     }
 
-    // Jika valid, pindah ke beranda
+    // Jika valid, pindah ke halaman sesuai role
     if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const OrderPage()),
-      );
+      final bool isAdmin = _isAdmin(email);
+
+      if (isAdmin) {
+        // Admin navigasi ke halaman admin order
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
+        );
+      } else {
+        // User navigasi ke halaman beranda user
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const BerandaPage()),
+        );
+      }
     }
   }
 

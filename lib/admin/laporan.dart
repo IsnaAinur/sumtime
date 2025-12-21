@@ -251,12 +251,12 @@ class _LaporanPageState extends State<LaporanPage> {
 
             // Table Content
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               child: Table(
                 columnWidths: const {
-                  0: FlexColumnWidth(1.0),
-                  1: FlexColumnWidth(2.0),
-                  2: FlexColumnWidth(3.0),
+                  0: FlexColumnWidth(1.3),
+                  1: FlexColumnWidth(2.5),
+                  2: FlexColumnWidth(2.8),
                   3: FlexColumnWidth(2.5),
                   4: FlexColumnWidth(2.5),
                 },
@@ -277,8 +277,8 @@ class _LaporanPageState extends State<LaporanPage> {
                     ),
                     children: [
                       _buildTableHeaderCell('No.'),
-                      _buildTableHeaderCell('Tanggal'),
-                      _buildTableHeaderCell('ID Order'),
+                      _buildTableHeaderCell('Tanggal', textAlign: TextAlign.left),
+                      _buildTableHeaderCell('ID Order', textAlign: TextAlign.left),
                       _buildTableHeaderCell('Total Harga'),
                       _buildTableHeaderCell('Aksi'),
                     ],
@@ -290,12 +290,12 @@ class _LaporanPageState extends State<LaporanPage> {
                     ),
                     children: [
                       _buildTableDataCell(item.no.toString(), isBold: true),
-                      _buildTableDataCell(item.formattedDate),
-                      _buildTableDataCell(item.orderId, isBold: true),
+                      _buildTableDataCell(item.formattedDate, textAlign: TextAlign.left),
+                      _buildTableDataCell(item.orderId, isBold: true, textAlign: TextAlign.left),
                       _buildTableDataCell(item.totalHarga, color: const Color(0xFF10B981), isBold: true),
                       TableCell(
                         child: Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(8),
                           child: ElevatedButton(
                             onPressed: () {
                               Navigator.push(
@@ -307,12 +307,12 @@ class _LaporanPageState extends State<LaporanPage> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFFDD0303),
                               foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(6),
                               ),
                               elevation: 1,
-                              textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
@@ -329,36 +329,36 @@ class _LaporanPageState extends State<LaporanPage> {
   }
 
   // Table Header Cell
-  Widget _buildTableHeaderCell(String text) {
+  Widget _buildTableHeaderCell(String text, {TextAlign textAlign = TextAlign.center}) {
     return TableCell(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         child: Text(
           text,
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Color(0xFFDD0303),
-            fontSize: 14,
+            fontSize: 13,
           ),
-          textAlign: TextAlign.center,
+          textAlign: textAlign,
         ),
       ),
     );
   }
 
   // Table Data Cell
-  Widget _buildTableDataCell(String text, {bool isBold = false, Color? color}) {
+  Widget _buildTableDataCell(String text, {bool isBold = false, Color? color, TextAlign textAlign = TextAlign.center}) {
     return TableCell(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(10),
         child: Text(
           text,
           style: TextStyle(
-            fontSize: 14,
+            fontSize: 12,
             fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
             color: color ?? Colors.black87,
           ),
-          textAlign: TextAlign.center,
+          textAlign: textAlign,
         ),
       ),
     );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'order_page.dart';
+import 'beranda.dart';
+import 'admin/order_page.dart' as admin_order;
 import 'register.dart';
 
 class LoginPage extends StatefulWidget {
@@ -19,9 +20,17 @@ class _LoginPageState extends State<LoginPage> {
   Color _getColorFromHex(String hexColor) {
     hexColor = hexColor.toUpperCase().replaceAll('#', '');
     if (hexColor.length == 6) {
-      hexColor = 'FF$hexColor'; 
+      hexColor = 'FF$hexColor';
     }
     return Color(int.parse(hexColor, radix: 16));
+  }
+
+  // Fungsi untuk menentukan role berdasarkan email
+  bool _isAdmin(String email) {
+    // Admin jika email mengandung 'admin' atau email admin khusus
+    return email.toLowerCase().contains('admin') ||
+           email.toLowerCase() == 'admin@sumtime.com' ||
+           email.toLowerCase() == 'administrator@gmail.com';
   }
 
   Future<void> _validateLogin() async {
@@ -73,20 +82,33 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Jika valid, pindah ke beranda
+    // Jika valid, pindah ke halaman sesuai role
     if (mounted) {
+      final bool isAdmin = _isAdmin(email);
+      final String roleMessage = isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!";
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Login berhasil!"),
+        SnackBar(
+          content: Text(roleMessage),
           backgroundColor: Colors.green,
-          duration: Duration(milliseconds: 800),
+          duration: const Duration(milliseconds: 800),
         ),
       );
-      
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const OrderPage()),
-      );
+
+      // Navigasi berdasarkan role
+      if (isAdmin) {
+        // Admin navigasi ke halaman admin order
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
+        );
+      } else {
+        // User navigasi ke halaman beranda user
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const BerandaPage()),
+        );
+      }
     }
   }
 
