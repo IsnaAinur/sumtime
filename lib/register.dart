@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'beranda.dart';
 import 'admin/order_page.dart' as admin_order;
+import 'services/auth_service.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -44,51 +46,46 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    // Cek apakah email sudah terdaftar
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-    
-    if (!mounted) return;
-    
-    if (savedEmail != null && savedEmail == email) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email sudah terdaftar!")),
+    try {
+      // Use Supabase authentication
+      final authService = AuthService();
+      await authService.signUp(
+        email: email,
+        password: password,
+        username: username,
       );
-      return;
-    }
 
-    // Simpan data ke SharedPreferences
-    await prefs.setString('username', username);
-    await prefs.setString('email', email);
-    await prefs.setString('password', password);
+      if (!mounted) return;
 
-    // Tampilkan pesan sukses
-    if (mounted) {
+      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Registrasi berhasil!"),
+          content: Text("Registrasi berhasil! Silakan login."),
           backgroundColor: Colors.green,
         ),
       );
-    }
 
-    // Jika valid, pindah ke halaman sesuai role
-    if (mounted) {
-      final bool isAdmin = _isAdmin(email);
+      // Navigate back to login
+      Navigator.pop(context);
+    } on AuthException catch (e) {
+      if (!mounted) return;
 
-      if (isAdmin) {
-        // Admin navigasi ke halaman admin order
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
-        );
-      } else {
-        // User navigasi ke halaman beranda user
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const BerandaPage()),
-        );
+      String errorMessage = "Registrasi gagal!";
+      if (e.message.contains('User already registered')) {
+        errorMessage = "Email sudah terdaftar!";
+      } else if (e.message.contains('Password should be at least')) {
+        errorMessage = "Password minimal 6 karakter!";
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Terjadi kesalahan: $e")),
+      );
     }
   }
 

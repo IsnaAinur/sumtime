@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'services/supabase_config.dart';
 import 'splash.dart';
 import 'login.dart';
 import 'register.dart';
@@ -16,7 +18,12 @@ import 'admin/add_item_main.dart' as admin_add_item;
 import 'admin/add_item_poster.dart' as admin_add_poster;
 import 'admin/tambah_item_menu.dart' as admin_tambah_menu;
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Supabase
+  await SupabaseConfig.initialize();
+
   runApp(const SumTimeApp());
 }
 

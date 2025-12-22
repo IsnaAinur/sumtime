@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'beranda.dart';
 import 'admin/order_page.dart' as admin_order;
 import 'register.dart';
+import 'services/auth_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -51,40 +53,15 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
-    // Validasi dari SharedPreferences
-    final prefs = await SharedPreferences.getInstance();
-    final savedEmail = prefs.getString('email');
-    final savedPassword = prefs.getString('password');
+    try {
+      // Use Supabase authentication
+      final authService = AuthService();
+      final response = await authService.signIn(email: email, password: password);
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (savedEmail == null || savedPassword == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email belum terdaftar! Silakan daftar terlebih dahulu.")),
-      );
-
-      // Navigasi ke halaman register setelah delay singkat
-      Future.delayed(const Duration(seconds: 1), () {
-        if (mounted) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const RegisterPage()),
-          );
-        }
-      });
-      return;
-    }
-
-    if (savedEmail != email || savedPassword != password) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email atau password salah!")),
-      );
-      return;
-    }
-
-    // Jika valid, pindah ke halaman sesuai role
-    if (mounted) {
-      final bool isAdmin = _isAdmin(email);
+      // Check user role from database
+      final isAdmin = await authService.isAdmin();
       final String roleMessage = isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!";
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -95,20 +72,37 @@ class _LoginPageState extends State<LoginPage> {
         ),
       );
 
-      // Navigasi berdasarkan role
+      // Navigate based on role
       if (isAdmin) {
-        // Admin navigasi ke halaman admin order
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
         );
       } else {
-        // User navigasi ke halaman beranda user
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const BerandaPage()),
         );
       }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = "Login gagal!";
+      if (e.message.contains('Invalid login credentials')) {
+        errorMessage = "Email atau password salah!";
+      } else if (e.message.contains('Email not confirmed')) {
+        errorMessage = "Email belum dikonfirmasi!";
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMessage)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Terjadi kesalahan: $e")),
+      );
     }
   }
 

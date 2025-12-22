@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'login.dart';
+import 'services/auth_service.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -194,17 +195,28 @@ class _ProfilePageState extends State<ProfilePage> {
     );
 
     if (confirm == true) {
-      // Hapus data dari SharedPreferences (atau hanya clear session)
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // Hapus semua data, atau bisa hanya hapus email/password saja
+      try {
+        final authService = AuthService();
+        await authService.signOut();
 
-      // Navigate kembali ke login
-      if (mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const LoginPage()),
-          (route) => false, // Hapus semua route sebelumnya
-        );
+        // Clear local SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+
+        // Navigate kembali ke login
+        if (mounted) {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(builder: (context) => const LoginPage()),
+            (route) => false, // Hapus semua route sebelumnya
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Logout gagal: $e')),
+          );
+        }
       }
     }
   }
