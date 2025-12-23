@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'rincianpesanan.dart';
+import 'history_pemesanan.dart';
+
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
@@ -61,31 +63,55 @@ class _PaymentPageState extends State<PaymentPage> {
   }
 
   void _processPayment() {
-    if (_paymentProofFile != null || _paymentProofBytes != null) {
-      // Navigate ke halaman rincian pesanan setelah pembayaran diproses
-      final orderNumber = 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+  if (_paymentProofFile != null || _paymentProofBytes != null) {
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RincianPesananPage(
-            orderItems: widget.cart,
-            shippingCost: widget.shippingCost,
-            orderNumber: orderNumber,
-            orderDate: DateTime.now(),
-            currentStatus: 1, // Status: Dibuatkan
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Harap unggah bukti pembayaran terlebih dahulu.'),
-          backgroundColor: Color(0xFFDD0303),
-        ),
-      );
+    // 1️⃣ Buat ID Order
+    final String orderNumber =
+        'ORD-${DateTime.now().millisecondsSinceEpoch}';
+
+    // 2️⃣ Hitung total harga
+    int subtotal = 0;
+    for (final item in widget.cart) {
+      subtotal += item['harga'] as int;
     }
+    final int total = subtotal + widget.shippingCost;
+
+    // 3️⃣ Buat OrderItem (INI KUNCI HISTORY)
+    final newOrder = OrderItem(
+      orderId: orderNumber,
+      priceText: total.toString(),
+      orderItems: widget.cart,
+      shippingCost: widget.shippingCost,
+      orderDate: DateTime.now(),
+      status: 1, // Dibuatkan → BERLANGSUNG
+    );
+
+    // 4️⃣ SIMPAN KE HISTORY
+    GlobalOrderData.addOrder(newOrder);
+
+    // 5️⃣ Pindah ke halaman Rincian Pesanan (TETAP)
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => RincianPesananPage(
+          orderItems: widget.cart,
+          shippingCost: widget.shippingCost,
+          orderNumber: orderNumber,
+          orderDate: DateTime.now(),
+          currentStatus: 1,
+        ),
+      ),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Harap unggah bukti pembayaran terlebih dahulu.'),
+        backgroundColor: Color(0xFFDD0303),
+      ),
+    );
   }
+}
+
 
   @override
   Widget build(BuildContext context) {

@@ -1,6 +1,29 @@
 import 'package:flutter/material.dart';
 import 'rincianpesanan.dart';
 
+class GlobalOrderData {//..........................................
+  // List static untuk menampung semua pesanan
+  static List<OrderItem> allOrders = [
+    // Data awal (dummy)
+    OrderItem(
+      orderId: 'ORD-1001',
+      priceText: '81.000',
+      orderItems: [
+        {'name': 'Dimsum Ayam', 'harga': 25000, 'quantity': 1},
+        {'name': 'Dimsum Udang', 'harga': 28000, 'quantity': 2},
+      ],
+      shippingCost: 10000,
+      orderDate: DateTime.now().subtract(const Duration(hours: 2)),
+      status: 1,
+    ),
+  ];
+
+  // Fungsi untuk menambah pesanan baru
+  static void addOrder(OrderItem newOrder) {
+    allOrders.insert(0, newOrder); // Tambah di paling atas
+  }
+}//.....................................................................
+
 class HistoryPesananPage extends StatefulWidget {
   const HistoryPesananPage({super.key});
 
@@ -13,7 +36,7 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
 
   int selectedTab = 0; // 0: Berlangsung, 1: Selesai
   int _currentIndex = 1; // Bottom nav index, 1 = History
-
+  
   // Data pesanan berlangsung (status 0-2)
   final List<OrderItem> berlangsung = [
     OrderItem(
@@ -135,6 +158,15 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
 
   @override
   Widget build(BuildContext context) {
+    
+    final berlangsung = GlobalOrderData.allOrders
+        .where((order) => order.status >= 0 && order.status <= 2)
+        .toList();
+        
+    final selesai = GlobalOrderData.allOrders
+        .where((order) => order.status == 3)
+        .toList();
+    
     final items = selectedTab == 0 ? berlangsung : selesai;
 
     return Scaffold(
