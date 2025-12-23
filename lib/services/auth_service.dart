@@ -5,27 +5,25 @@ class AuthService {
   final SupabaseClient _client = SupabaseConfig.client;
 
   // ======================
-  // SIGN UP
+  // SIGN UP (DIPERBARUI)
   // ======================
   Future<AuthResponse> signUp({
     required String email,
     required String password,
     required String username,
   }) async {
+    // Kita mengirim 'username' lewat parameter 'data' (metadata).
+    // Trigger di database akan otomatis mengambil ini dan memasukkannya ke tabel 'users'.
     final response = await _client.auth.signUp(
       email: email,
       password: password,
+      data: {
+        'username': username, 
+      },
     );
 
-    if (response.user != null) {
-      await _client.from('users').insert({
-        'id': response.user!.id,
-        'username': username,
-        'email': email,
-        'role': 'user', // DEFAULT USER
-      });
-    }
-
+    // KITA HAPUS INSERT MANUAL DI SINI AGAR TIDAK ERROR "DUPLICATE KEY"
+    
     return response;
   }
 
