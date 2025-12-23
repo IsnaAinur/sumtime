@@ -27,84 +27,87 @@ class _LoginPageState extends State<LoginPage> {
     return Color(int.parse(hexColor, radix: 16));
   }
 
-  // Fungsi untuk menentukan role berdasarkan email
-  bool _isAdmin(String email) {
-    // Admin jika email mengandung 'admin' atau email admin khusus
-    return email.toLowerCase().contains('admin') ||
-           email.toLowerCase() == 'admin@sumtime.com' ||
-           email.toLowerCase() == 'administrator@gmail.com';
+ Future<void> _validateLogin() async {
+  String email = emailController.text.trim();
+  String password = passwordController.text.trim();
+
+  if (email.isEmpty || password.isEmpty) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Tolong lengkapi semua kolom")),
+    );
+    return;
   }
 
-  Future<void> _validateLogin() async {
-    String email = emailController.text.trim();
-    String password = passwordController.text.trim();
+  if (!email.endsWith('@gmail.com')) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Gunakan email yang valid!")),
+    );
+    return;
+  }
 
-    if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Tolong lengkapi semua kolom")),
-      );
-      return;
-    }
+  try {
+    final authService = AuthService();
 
-    if (!email.endsWith('@gmail.com')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Gunakan email yang valid!")),
-      );
-      return;
-    }
+    // LOGIN AUTH
+    await authService.signIn(
+      email: email,
+      password: password,
+    );
 
-    try {
-      // Use Supabase authentication
-      final authService = AuthService();
-      final response = await authService.signIn(email: email, password: password);
+    if (!mounted) return;
 
-      if (!mounted) return;
+    // CEK ROLE DARI DATABASE
+    final bool isAdmin = await authService.isAdmin();
 
-      // Check user role from database
-      final isAdmin = await authService.isAdmin();
-      final String roleMessage = isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!";
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          isAdmin
+              ? "Login berhasil sebagai Admin!"
+              : "Login berhasil!",
+        ),
+        backgroundColor: Colors.green,
+        duration: const Duration(milliseconds: 800),
+      ),
+    );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(roleMessage),
-          backgroundColor: Colors.green,
-          duration: const Duration(milliseconds: 800),
+    // ROUTING (TIDAK DIUBAH)
+    if (isAdmin) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const admin_order.OrderPage(),
         ),
       );
-
-      // Navigate based on role
-      if (isAdmin) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const admin_order.OrderPage()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const BerandaPage()),
-        );
-      }
-    } on AuthException catch (e) {
-      if (!mounted) return;
-
-      String errorMessage = "Login gagal!";
-      if (e.message.contains('Invalid login credentials')) {
-        errorMessage = "Email atau password salah!";
-      } else if (e.message.contains('Email not confirmed')) {
-        errorMessage = "Email belum dikonfirmasi!";
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(errorMessage)),
-      );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Terjadi kesalahan: $e")),
+    } else {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const BerandaPage(),
+        ),
       );
     }
+  } on AuthException catch (e) {
+    if (!mounted) return;
+
+    String errorMessage = "Login gagal!";
+    if (e.message.contains('Invalid login credentials')) {
+      errorMessage = "Email atau password salah!";
+    } else if (e.message.contains('Email not confirmed')) {
+      errorMessage = "Email belum dikonfirmasi!";
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(errorMessage)),
+    );
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Terjadi kesalahan: $e")),
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {
