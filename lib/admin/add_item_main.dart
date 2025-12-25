@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'nav._bottom.dart';
+import 'package:uuid/uuid.dart';
 
 class AddItemMainPage extends StatefulWidget {
   const AddItemMainPage({super.key});
@@ -15,6 +17,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
   static const Color red = Color(0xFFDD0303);
 
   int selectedTab = 0; // 0: Add Poster, 1: Add Menu
+  bool _isLoading = false;
 
   // Controllers untuk form Add Menu
   final _namaController = TextEditingController();
@@ -25,7 +28,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
   final ImagePicker _picker = ImagePicker();
 
   // State variables untuk menyimpan gambar yang dipilih
-  File? _posterImage;
+  Uint8List? _posterImageBytes;
   File? _menuImage;
 
   // Dynamic list untuk menyimpan menu yang ditambahkan admin
@@ -45,22 +48,69 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
 
   // Fungsi untuk memilih gambar poster dari galeri
   Future<void> _pickPosterImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _posterImage = File(image.path);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Poster berhasil dipilih')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error memilih gambar: $e')),
-      );
-    }
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (pickedFile != null) {
+    final bytes = await pickedFile.readAsBytes();
+
+    setState(() {
+      _posterImageBytes = bytes;
+    });
   }
+}
+
+
+  Future<void> _savePoster() async {
+  if (_posterImageBytes == null) return;
+
+  setState(() => _isLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+    final fileName = 'posters/${const Uuid().v4()}.jpg';
+    await supabase.storage.from('posters').uploadBinary(
+      fileName,
+      _posterImageBytes!,
+      fileOptions: const FileOptions(
+        contentType: 'image/jpeg',
+        upsert: false,
+      ),
+    );
+
+    // Ambil PUBLIC URL
+    final imageUrl =
+        supabase.storage.from('posters').getPublicUrl(fileName);
+
+    // Simpan ke tabel posters
+    await supabase.from('posters').insert({
+      'title': 'Poster Menu',
+      'image_url': imageUrl,
+      'is_active': true,
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Poster berhasil disimpan')),
+    );
+
+    setState(() {
+      _posterImageBytes = null;
+    });
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal menyimpan poster: $e')),
+    );
+  } finally {
+    setState(() => _isLoading = false);
+  }
+}
+
 
   // Fungsi untuk memilih gambar menu dari galeri
   Future<void> _pickMenuImage() async {
@@ -249,23 +299,17 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.black12, width: 1),
             ),
-            child: _posterImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: kIsWeb
-                        ? Image.network(
-                            _posterImage!.path,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          )
-                        : Image.file(
-                            _posterImage!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                  )
+                  child: _posterImageBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(
+                          _posterImageBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
+
                 : const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -326,23 +370,16 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: _posterImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: kIsWeb
-                            ? Image.network(
-                                _posterImage!.path,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              )
-                            : Image.file(
-                                _posterImage!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
-                      )
+                child: _posterImageBytes != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(
+                        _posterImageBytes!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    )
                     : const Center(
                         child: Text(
                           "Poster akan muncul di sini",
@@ -363,12 +400,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: () {
-              // TODO: Implementasi simpan poster
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Poster berhasil disimpan')),
-              );
-            },
+            onPressed: _isLoading ? null : _savePoster,
             style: ElevatedButton.styleFrom(
               backgroundColor: red,
               foregroundColor: Colors.white,
@@ -376,13 +408,17 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              "Simpan Poster",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: _isLoading
+              ? const CircularProgressIndicator(
+                  color: Colors.white,
+                )
+                : const Text(
+                  "Simpan Poster",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
           ),
         ),
       ],

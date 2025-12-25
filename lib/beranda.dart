@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
 
@@ -12,7 +13,8 @@ class BerandaPage extends StatefulWidget {
 class _BerandaPageState extends State<BerandaPage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-  final String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
+  String? _posterUrl;
+  bool _isPosterLoading = true;
   bool _isSearching = false;
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
   final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
@@ -56,6 +58,7 @@ class _BerandaPageState extends State<BerandaPage> {
   void initState() {
     super.initState();
     _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+    _fetchPoster();
   }
 
   @override
@@ -63,6 +66,33 @@ class _BerandaPageState extends State<BerandaPage> {
     _searchController.dispose();
     super.dispose();
   }
+
+  Future<void> _fetchPoster() async {
+  setState(() => _isPosterLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('posters')
+        .select()
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(1); // ✅ TANPA .single()
+
+    if (data.isNotEmpty) {
+      _posterUrl = data.first['image_url'];
+    } else {
+      _posterUrl = null;
+    }
+  } catch (e) {
+    debugPrint('ERROR FETCH POSTER: $e');
+    _posterUrl = null;
+  }
+
+  setState(() => _isPosterLoading = false);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -154,35 +184,39 @@ class _BerandaPageState extends State<BerandaPage> {
                               width: 2,
                             ),
                           ),
-                          child: _posterUrl.isNotEmpty
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    _posterUrl,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Center(
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          size: 40,
-                                          color: Colors.grey,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    'Poster',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFDD0303),
+                          child: _isPosterLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _posterUrl != null
+                                  ? Builder(
+                                      builder: (context) {
+                                        print('POSTER URL: $_posterUrl');
+
+                                        return ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.network(
+                                            '$_posterUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            loadingBuilder: (context, child, loadingProgress) {
+                                              if (loadingProgress == null) return child;
+                                              return const Center(
+                                                child: CircularProgressIndicator(),
+                                              );
+                                            },
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('IMAGE ERROR: $error');
+                                              return const Center(
+                                                child: Text('Gagal memuat poster'),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : const Center(
+                                      child: Text('Belum ada poster'),
                                     ),
-                                  ),
-                                ),
+
                         ),
                         const SizedBox(height: 24),
                         
