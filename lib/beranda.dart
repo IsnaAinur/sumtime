@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'info_menu.dart';
 import 'checkout.dart';
 
@@ -12,50 +13,21 @@ class BerandaPage extends StatefulWidget {
 class _BerandaPageState extends State<BerandaPage> {
   int _currentIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-  final String _posterUrl = 'https://media.istockphoto.com/id/96655791/id/foto/dim-sum.jpg?s=2048x2048&w=is&k=20&c=5C9ssVnd-_pcyOz9z2uCu3P3KbqbnSqov5juSDbjN44='; // Isi dengan URL poster kamu
+  String? _posterUrl;
+  bool _isPosterLoading = true;
   bool _isSearching = false;
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
   final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
-
-  // Sample data for products
-  final List<Map<String, dynamic>> _allProducts = [
-    {
-      'name': 'Dimsum Ayam',
-      'price': 'Rp 25.000',
-      'harga': 25000,
-      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
-      'deskripsi': 'Dimsum ayam yang lezat dengan isian daging ayam pilihan, dibungkus dengan kulit yang tipis dan lembut. Dimasak dengan teknik steaming yang sempurna untuk menghasilkan tekstur yang kenyal dan rasa yang gurih.',
-    },
-    {
-      'name': 'Dimsum Udang',
-      'price': 'Rp 28.000',
-      'harga': 28000,
-      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
-      'deskripsi': 'Dimsum udang premium dengan isian udang segar yang melimpah. Dibuat dengan resep tradisional yang menghasilkan cita rasa yang autentik dan nikmat.',
-    },
-    {
-      'name': 'Es Jeruk',
-      'price': 'Rp 15.000',
-      'harga': 15000,
-      'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
-      'deskripsi': 'Es jeruk segar yang menyegarkan, dibuat dari jeruk peras asli tanpa pengawet. Sempurna untuk menemani hidangan dimsum Anda.',
-    },
-    {
-      'name': 'Es Teh',
-      'price': 'Rp 12.000',
-      'harga': 12000,
-      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',
-      'deskripsi': 'Es teh manis yang segar, dibuat dari teh pilihan dengan takaran gula yang pas. Minuman klasik yang selalu cocok untuk segala suasana.',
-    },
-  ];
-
-  // List produk yang akan ditampilkan (hasil filter)
-  late List<Map<String, dynamic>> _filteredProducts;
+  List<Map<String, dynamic>> _allProducts = [];
+  List<Map<String, dynamic>> _filteredProducts = [];
+  bool _isMenuLoading = true;
 
   @override
   void initState() {
     super.initState();
     _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
+    _fetchPoster();
+    _fetchMenu();
   }
 
   @override
@@ -63,6 +35,68 @@ class _BerandaPageState extends State<BerandaPage> {
     _searchController.dispose();
     super.dispose();
   }
+
+  // Ambil Data Menu
+  Future<void> _fetchMenu() async {
+  setState(() => _isMenuLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('menu_items')
+        .select()
+        .eq('is_available', true)
+        .order('created_at', ascending: false);
+
+    setState(() {
+      _allProducts = data.map<Map<String, dynamic>>((item) {
+        return {
+          'name': item['name'],
+          'price': 'Rp ${item['price']}',
+          'harga': item['price'],
+          'image': item['image_url'],
+          'deskripsi': item['description'],
+        };
+      }).toList();
+
+      _filteredProducts = List.from(_allProducts);
+    });
+  } catch (e) {
+    debugPrint('ERROR FETCH MENU: $e');
+  }
+
+  setState(() => _isMenuLoading = false);
+}
+
+
+  // Ambil Data Poster
+  Future<void> _fetchPoster() async {
+  setState(() => _isPosterLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('posters')
+        .select()
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(1); // ✅ TANPA .single()
+
+    if (data.isNotEmpty) {
+      _posterUrl = data.first['image_url'];
+    } else {
+      _posterUrl = null;
+    }
+  } catch (e) {
+    debugPrint('ERROR FETCH POSTER: $e');
+    _posterUrl = null;
+  }
+
+  setState(() => _isPosterLoading = false);
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -154,35 +188,38 @@ class _BerandaPageState extends State<BerandaPage> {
                               width: 2,
                             ),
                           ),
-                          child: _posterUrl.isNotEmpty
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.network(
-                                    _posterUrl,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return const Center(
-                                        child: Icon(
-                                          Icons.broken_image,
-                                          size: 40,
-                                          color: Colors.grey,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    'Poster',
-                                    style: TextStyle(
-                                      fontSize: 24,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFDD0303),
+                          child: _isPosterLoading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _posterUrl != null
+                                  ? Builder(
+                                      builder: (context) {
+                                        print('POSTER URL: $_posterUrl');
+                                        return ClipRRect(
+                                          borderRadius: BorderRadius.circular(10),
+                                          child: Image.network(
+                                            '$_posterUrl?v=${DateTime.now().millisecondsSinceEpoch}',
+                                            fit: BoxFit.cover,
+                                            width: double.infinity,
+                                            loadingBuilder: (context, child, loadingProgress) {
+                                              if (loadingProgress == null) return child;
+                                              return const Center(
+                                                child: CircularProgressIndicator(),
+                                              );
+                                            },
+                                            errorBuilder: (context, error, stackTrace) {
+                                              debugPrint('IMAGE ERROR: $error');
+                                              return const Center(
+                                                child: Text('Gagal memuat poster'),
+                                              );
+                                            },
+                                          ),
+                                        );
+                                      },
+                                    )
+                                  : const Center(
+                                      child: Text('Belum ada poster'),
                                     ),
-                                  ),
-                                ),
+
                         ),
                         const SizedBox(height: 24),
                         
@@ -220,22 +257,22 @@ class _BerandaPageState extends State<BerandaPage> {
                       ],
                       
                       // Product Grid
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.75,
-                        ),
-                        itemCount: _filteredProducts.length,
-                        itemBuilder: (context, index) {
-                          return _buildProductCard(_filteredProducts[index]);
-                        },
-                      ),
-
+                        _isMenuLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _filteredProducts.length,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.75,
+                            ),
+                            itemBuilder: (context, index) {
+                              return _buildProductCard(_filteredProducts[index]);
+                            },
+                          ),
                       const SizedBox(height: 16),
                     ],
                   ),

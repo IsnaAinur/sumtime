@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'nav._bottom.dart';
+import 'package:path/path.dart' as path;
+import 'package:uuid/uuid.dart';
 
 class AddItemMainPage extends StatefulWidget {
   const AddItemMainPage({super.key});
@@ -15,6 +17,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
   static const Color red = Color(0xFFDD0303);
 
   int selectedTab = 0; // 0: Add Poster, 1: Add Menu
+  bool _isLoading = false;
 
   // Controllers untuk form Add Menu
   final _namaController = TextEditingController();
@@ -25,8 +28,8 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
   final ImagePicker _picker = ImagePicker();
 
   // State variables untuk menyimpan gambar yang dipilih
-  File? _posterImage;
-  File? _menuImage;
+  Uint8List? _posterImageBytes;
+  Uint8List? _menuImageBytes;
 
   // Dynamic list untuk menyimpan menu yang ditambahkan admin
   List<Map<String, dynamic>> _daftarMenu = [];
@@ -34,6 +37,12 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
   // State untuk mode edit
   bool _isEditMode = false;
   int? _editingIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMenuFromSupabase();
+  }
 
   @override
   void dispose() {
@@ -45,68 +54,165 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
 
   // Fungsi untuk memilih gambar poster dari galeri
   Future<void> _pickPosterImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _posterImage = File(image.path);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Poster berhasil dipilih')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error memilih gambar: $e')),
-      );
-    }
+  final picker = ImagePicker();
+  final pickedFile = await picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (pickedFile != null) {
+    final bytes = await pickedFile.readAsBytes();
+
+    setState(() {
+      _posterImageBytes = bytes;
+    });
   }
+}
+
+Future<void> _loadMenuFromSupabase() async {
+  try {
+    final supabase = Supabase.instance.client;
+
+    final response = await supabase
+        .from('menu_items')
+        .select()
+        .order('created_at', ascending: false);
+
+    setState(() {
+      _daftarMenu = response.map<Map<String, dynamic>>((item) {
+        return {
+          "nama": item['name'],
+          "harga": item['price'].toString(),
+          "image_url": item['image_url'],
+        };
+      }).toList();
+    });
+  } catch (e) {
+    debugPrint('ERROR LOAD MENU: $e');
+  }
+}
+
+  Future<void> _savePoster() async {
+  if (_posterImageBytes == null) return;
+
+  setState(() => _isLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+    final fileName = 'posters/${const Uuid().v4()}.jpg';
+    await supabase.storage.from('posters').uploadBinary(
+      fileName,
+      _posterImageBytes!,
+      fileOptions: const FileOptions(
+        contentType: 'image/jpeg',
+        upsert: false,
+      ),
+    );
+
+    // Ambil PUBLIC URL
+    final imageUrl =
+        supabase.storage.from('posters').getPublicUrl(fileName);
+
+    // Simpan ke tabel posters
+    await supabase.from('posters').insert({
+      'title': 'Poster Menu',
+      'image_url': imageUrl,
+      'is_active': true,
+    });
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Poster berhasil disimpan')),
+    );
+
+    setState(() {
+      _posterImageBytes = null;
+    });
+  } catch (e) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal menyimpan poster: $e')),
+    );
+  } finally {
+    setState(() => _isLoading = false);
+  }
+}
+
 
   // Fungsi untuk memilih gambar menu dari galeri
   Future<void> _pickMenuImage() async {
-    try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-      if (image != null) {
-        setState(() {
-          _menuImage = File(image.path);
-        });
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gambar menu berhasil dipilih')),
-        );
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error memilih gambar: $e')),
-      );
-    }
-  }
+  final picked = await _picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (picked == null) return;
+
+  final bytes = await picked.readAsBytes();
+
+  setState(() {
+    _menuImageBytes = bytes;
+  });
+}
 
   // Fungsi untuk menambahkan menu baru ke daftar
-  void _addMenuItem() {
-    if (_namaController.text.isNotEmpty && _hargaController.text.isNotEmpty) {
-      setState(() {
-        _daftarMenu.add({
-          "nama": _namaController.text,
-          "harga": _hargaController.text,
-          "gambar": _menuImage, // Simpan referensi gambar
-        });
-
-        // Clear form setelah menambah menu
-        _namaController.clear();
-        _deskripsiController.clear();
-        _hargaController.clear();
-        _menuImage = null;
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Menu "${_namaController.text}" berhasil ditambahkan')),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama menu dan harga harus diisi')),
-      );
-    }
+  Future<void> _addMenuItem() async {
+  if (_namaController.text.isEmpty ||
+      _hargaController.text.isEmpty ||
+      _menuImageBytes == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Nama, harga, dan gambar wajib diisi')),
+    );
+    return;
   }
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    // 1️⃣ Upload image ke storage
+    final fileName = 'menu/${const Uuid().v4()}.jpg';
+
+    await supabase.storage.from('menu').uploadBinary(
+      fileName,
+      _menuImageBytes!,
+      fileOptions: const FileOptions(
+        contentType: 'image/jpeg',
+      ),
+    );
+
+    // 2️⃣ Ambil public URL
+    final imageUrl =
+        supabase.storage.from('menu').getPublicUrl(fileName);
+
+    // 3️⃣ Insert ke database
+    await supabase.from('menu_items').insert({
+      'name': _namaController.text.trim(),
+      'description': _deskripsiController.text.trim(),
+      'price': int.parse(_hargaController.text),
+      'image_url': imageUrl,
+      'is_available': true,
+    });
+
+    // Load daftar menu
+    _menuImageBytes = null;
+    await _loadMenuFromSupabase();
+
+    // Clear form
+    _namaController.clear();
+    _deskripsiController.clear();
+    _hargaController.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Menu berhasil disimpan')),
+    );
+  } catch (e) {
+    debugPrint('ERROR SIMPAN MENU: $e');
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal simpan menu')),
+    );
+  }
+}
 
   // Fungsi untuk mulai edit menu
   void _startEditMenu(int index) {
@@ -117,7 +223,6 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
       _namaController.text = item["nama"] ?? "";
       _deskripsiController.text = ""; // Deskripsi tidak disimpan sebelumnya
       _hargaController.text = item["harga"] ?? "";
-      _menuImage = item["gambar"];
     });
   }
 
@@ -128,7 +233,6 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
         _daftarMenu[_editingIndex!] = {
           "nama": _namaController.text,
           "harga": _hargaController.text,
-          "gambar": _menuImage,
         };
 
         // Reset edit mode
@@ -139,7 +243,6 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
         _namaController.clear();
         _deskripsiController.clear();
         _hargaController.clear();
-        _menuImage = null;
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -160,7 +263,6 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
       _namaController.clear();
       _deskripsiController.clear();
       _hargaController.clear();
-      _menuImage = null;
     });
   }
 
@@ -249,23 +351,17 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: Colors.black12, width: 1),
             ),
-            child: _posterImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: kIsWeb
-                        ? Image.network(
-                            _posterImage!.path,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          )
-                        : Image.file(
-                            _posterImage!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                  )
+                  child: _posterImageBytes != null
+                    ? ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Image.memory(
+                          _posterImageBytes!,
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          height: double.infinity,
+                        ),
+                      )
+
                 : const Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -326,23 +422,16 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.grey.shade300),
                 ),
-                child: _posterImage != null
-                    ? ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: kIsWeb
-                            ? Image.network(
-                                _posterImage!.path,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              )
-                            : Image.file(
-                                _posterImage!,
-                                fit: BoxFit.cover,
-                                width: double.infinity,
-                                height: double.infinity,
-                              ),
-                      )
+                child: _posterImageBytes != null
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(
+                        _posterImageBytes!,
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    )
                     : const Center(
                         child: Text(
                           "Poster akan muncul di sini",
@@ -363,12 +452,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
           width: double.infinity,
           height: 50,
           child: ElevatedButton(
-            onPressed: () {
-              // TODO: Implementasi simpan poster
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Poster berhasil disimpan')),
-              );
-            },
+            onPressed: _isLoading ? null : _savePoster,
             style: ElevatedButton.styleFrom(
               backgroundColor: red,
               foregroundColor: Colors.white,
@@ -376,13 +460,17 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: const Text(
-              "Simpan Poster",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            child: _isLoading
+              ? const CircularProgressIndicator(
+                  color: Colors.white,
+                )
+                : const Text(
+                  "Simpan Poster",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
           ),
         ),
       ],
@@ -451,41 +539,34 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
         ),
         const SizedBox(height: 10),
         InkWell(
-          borderRadius: BorderRadius.circular(14),
-          onTap: _pickMenuImage,
-          child: Container(
-            height: 170,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.black12, width: 1),
+  borderRadius: BorderRadius.circular(14),
+  onTap: _pickMenuImage,
+  child: Container(
+    height: 170,
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: Colors.black12, width: 1),
+    ),
+    child: _menuImageBytes != null
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: Image.memory(
+              _menuImageBytes!,
+              fit: BoxFit.cover,
+              width: double.infinity,
+              height: double.infinity,
             ),
-            child: _menuImage != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(14),
-                    child: kIsWeb
-                        ? Image.network(
-                            _menuImage!.path,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          )
-                        : Image.file(
-                            _menuImage!,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
-                  )
-                : const Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 40,
-                      color: Colors.black45,
-                    ),
-                  ),
+          )
+        : const Center(
+            child: Icon(
+              Icons.image_outlined,
+              size: 40,
+              color: Colors.black45,
+            ),
           ),
-        ),
+  ),
+),
 
         const SizedBox(height: 10),
 
@@ -609,7 +690,7 @@ class _AddItemMainPageState extends State<AddItemMainPage> {
                   return _MenuCard(
                     nama: item["nama"] ?? "-",
                     harga: item["harga"] ?? "-",
-                    gambar: item["gambar"],
+                    imageUrl: item["image_url"],
                     onEdit: () => _startEditMenu(i),
                     onDelete: () => _deleteMenuItem(i),
                   );
@@ -757,14 +838,14 @@ class _BlackTextField extends StatelessWidget {
 class _MenuCard extends StatelessWidget {
   final String nama;
   final String harga;
-  final File? gambar;
+  final String? imageUrl;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const _MenuCard({
     required this.nama,
     required this.harga,
-    this.gambar,
+    this.imageUrl,
     this.onEdit,
     this.onDelete,
   });
@@ -810,39 +891,26 @@ class _MenuCard extends StatelessWidget {
                         topLeft: Radius.circular(12),
                         topRight: Radius.circular(12),
                       ),
-                      child: gambar != null
-                          ? (kIsWeb
-                              ? Image.network(
-                                  gambar!.path,
-                                  fit: BoxFit.cover, // object-fit: cover
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.image,
-                                      size: 40,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                )
-                              : Image.file(
-                                  gambar!,
-                                  fit: BoxFit.cover, // object-fit: cover
-                                  width: double.infinity,
-                                  height: double.infinity,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return const Icon(
-                                      Icons.image,
-                                      size: 40,
-                                      color: Colors.grey,
-                                    );
-                                  },
-                                ))
+                      child: imageUrl != null && imageUrl!.isNotEmpty
+                          ? Image.network(
+                              imageUrl!,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.image,
+                                  size: 40,
+                                  color: Colors.grey,
+                                );
+                              },
+                            )
                           : const Icon(
                               Icons.image,
                               size: 40,
                               color: Colors.grey,
                             ),
+
                     ),
                   ),
                 ),

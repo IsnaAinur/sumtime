@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'nav._bottom.dart';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 class AddItemPosterPage extends StatefulWidget {
   const AddItemPosterPage({super.key});
@@ -10,6 +14,59 @@ class AddItemPosterPage extends StatefulWidget {
 
 class _AddItemPosterPageState extends State<AddItemPosterPage> {
   static const Color red = Color(0xFFDD0303);
+
+  File? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
+  bool _isLoading = false;
+
+  Future<void> _pickImage() async {
+    final picked = await _picker.pickImage(
+     source: ImageSource.gallery,
+     imageQuality: 80,
+    );
+
+    if (picked != null) {
+     setState(() {
+      _selectedImage = File(picked.path);
+     });
+   }
+  }
+
+  Future<void> _savePoster() async {
+   if (_selectedImage == null) return;
+
+    setState(() => _isLoading = true);
+
+    final supabase = Supabase.instance.client;
+
+   final fileName =
+       'poster_${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+   // Upload ke Storage
+   await supabase.storage
+       .from('posters')
+       .upload(fileName, _selectedImage!);
+
+    // Ambil URL public
+    final imageUrl =
+       supabase.storage.from('posters').getPublicUrl(fileName);
+
+    // Simpan ke tabel posters
+    await supabase.from('posters').insert({
+     'title': 'Poster Menu',
+      'image_url': imageUrl,
+      'is_active': true,
+   });
+
+   setState(() => _isLoading = false);
+
+   if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Poster berhasil disimpan')),
+      );
+      Navigator.pop(context);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,12 +114,7 @@ class _AddItemPosterPageState extends State<AddItemPosterPage> {
               // Area Upload Poster
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: () {
-                  // TODO: Implementasi pick image
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Fitur upload gambar akan segera hadir')),
-                  );
-                },
+                onTap: _pickImage,
                 child: Container(
                   height: 200,
                   decoration: BoxDecoration(
@@ -150,12 +202,7 @@ class _AddItemPosterPageState extends State<AddItemPosterPage> {
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Implementasi simpan poster
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Poster berhasil disimpan')),
-                    );
-                  },
+                   onPressed: _isLoading ? null : _savePoster,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: red,
                     foregroundColor: Colors.white,
