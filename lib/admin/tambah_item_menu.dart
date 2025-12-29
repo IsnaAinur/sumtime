@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'nav._bottom.dart';
+import 'dart:typed_data';
 
 class TambahItemMenuPage extends StatefulWidget {
   const TambahItemMenuPage({super.key});
@@ -10,18 +13,70 @@ class TambahItemMenuPage extends StatefulWidget {
 
 class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
   static const Color red = Color(0xFFDD0303);
-
   final _namaController = TextEditingController();
   final _deskripsiController = TextEditingController();
   final _hargaController = TextEditingController();
+  Uint8List? _menuImageBytes;
 
-  // Dummy data daftar menu (contoh)
-  final List<Map<String, String>> daftarMenu = [
-    {"nama": "Dimsum", "harga": "Rp 15.000"},
-    {"nama": "Es Teh", "harga": "Rp 3.000"},
-    {"nama": "Dimsum", "harga": "Rp 10.000"},
-    {"nama": "Es Jeruk", "harga": "Rp 5.000"},
-  ];
+  Future<void> _submitMenu() async {
+  if (_namaController.text.isEmpty ||
+      _hargaController.text.isEmpty ||
+      _menuImageBytes == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Nama, harga & gambar wajib diisi')),
+    );
+    return;
+  }
+
+  try {
+    final supabase = Supabase.instance.client;
+    final fileName = 'menu/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    await supabase.storage.from('menu').uploadBinary(
+      fileName,
+      _menuImageBytes!,
+      fileOptions: const FileOptions(
+        contentType: 'image/jpeg',
+      ),
+    );
+
+    final imageUrl =
+        supabase.storage.from('menu').getPublicUrl(fileName);
+
+    await supabase.from('menu_items').insert({
+      'name': _namaController.text,
+      'description': _deskripsiController.text,
+      'price': int.parse(_hargaController.text),
+      'image_url': imageUrl,
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Menu berhasil ditambahkan')),
+    );
+
+    Navigator.pop(context);
+  } catch (e) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Gagal simpan menu: $e')),
+    );
+  }
+}
+
+Future<void> _pickMenuImage() async {
+  final picker = ImagePicker();
+  final picked = await picker.pickImage(
+    source: ImageSource.gallery,
+    imageQuality: 80,
+  );
+
+  if (picked == null) return;
+
+  final bytes = await picked.readAsBytes();
+
+  setState(() {
+    _menuImageBytes = bytes;
+  });
+}
 
   @override
   void dispose() {
@@ -70,9 +125,7 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
                   Expanded(
                     child: _RedButton(
                       text: "Add Menu",
-                      onTap: () {
-                        // TODO: submit menu
-                      },
+                      onTap: _submitMenu,
                     ),
                   ),
                 ],
@@ -107,9 +160,7 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
               const SizedBox(height: 10),
               InkWell(
                 borderRadius: BorderRadius.circular(14),
-                onTap: () {
-                  // TODO: pick image menu
-                },
+                onTap: _pickMenuImage,
                 child: Container(
                   height: 170,
                   decoration: BoxDecoration(
@@ -117,13 +168,23 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.black12, width: 1),
                   ),
-                  child: const Center(
-                    child: Icon(
-                      Icons.image_outlined,
-                      size: 40,
-                      color: Colors.black45,
-                    ),
-                  ),
+                  child: _menuImageBytes != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.memory(
+                            _menuImageBytes!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                        )
+                      : const Center(
+                          child: Icon(
+                            Icons.image_outlined,
+                            size: 40,
+                            color: Colors.black45,
+                          ),
+                        ),
                 ),
               ),
 
@@ -147,27 +208,6 @@ class _TambahItemMenuPageState extends State<TambahItemMenuPage> {
                 ),
               ),
               const SizedBox(height: 10),
-
-              // Grid daftar menu (kotak merah, teks putih)
-              GridView.builder(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: daftarMenu.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.05,
-                ),
-                itemBuilder: (context, i) {
-                  final item = daftarMenu[i];
-                  return _MenuCardRed(
-                    nama: item["nama"] ?? "-",
-                    harga: item["harga"] ?? "-",
-                    red: red,
-                  );
-                },
-              ),
             ],
           ),
         ),

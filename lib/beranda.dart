@@ -18,47 +18,16 @@ class _BerandaPageState extends State<BerandaPage> {
   bool _isSearching = false;
   String _selectedCategory = 'Semua'; // 'Semua', 'Dimsum', 'Minuman'
   final List<Map<String, dynamic>> _cart = []; // Keranjang pesanan
-
-  // Sample data for products
-  final List<Map<String, dynamic>> _allProducts = [
-    {
-      'name': 'Dimsum Ayam',
-      'price': 'Rp 25.000',
-      'harga': 25000,
-      'image': 'https://media.istockphoto.com/id/2194538076/id/foto/siomai-kukus-lezat-dalam-kukusan-kayu.jpg?s=2048x2048&w=is&k=20&c=SrJjmcH_9uqDU4KRJxdiavA-_m2wZOGzacZAwkdZ968=',
-      'deskripsi': 'Dimsum ayam yang lezat dengan isian daging ayam pilihan, dibungkus dengan kulit yang tipis dan lembut. Dimasak dengan teknik steaming yang sempurna untuk menghasilkan tekstur yang kenyal dan rasa yang gurih.',
-    },
-    {
-      'name': 'Dimsum Udang',
-      'price': 'Rp 28.000',
-      'harga': 28000,
-      'image': 'https://media.istockphoto.com/id/1498163044/id/foto/siu-mai-siomai.jpg?s=2048x2048&w=is&k=20&c=wxatLTu9JGcom6T40qIykCMzXPYOMw_xIM60l-okWZM=',
-      'deskripsi': 'Dimsum udang premium dengan isian udang segar yang melimpah. Dibuat dengan resep tradisional yang menghasilkan cita rasa yang autentik dan nikmat.',
-    },
-    {
-      'name': 'Es Jeruk',
-      'price': 'Rp 15.000',
-      'harga': 15000,
-      'image': 'https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=800&auto=format&fit=crop',
-      'deskripsi': 'Es jeruk segar yang menyegarkan, dibuat dari jeruk peras asli tanpa pengawet. Sempurna untuk menemani hidangan dimsum Anda.',
-    },
-    {
-      'name': 'Es Teh',
-      'price': 'Rp 12.000',
-      'harga': 12000,
-      'image': 'https://cdn.pixabay.com/photo/2025/05/26/18/24/ai-generated-9623931_1280.jpg',
-      'deskripsi': 'Es teh manis yang segar, dibuat dari teh pilihan dengan takaran gula yang pas. Minuman klasik yang selalu cocok untuk segala suasana.',
-    },
-  ];
-
-  // List produk yang akan ditampilkan (hasil filter)
-  late List<Map<String, dynamic>> _filteredProducts;
+  List<Map<String, dynamic>> _allProducts = [];
+  List<Map<String, dynamic>> _filteredProducts = [];
+  bool _isMenuLoading = true;
 
   @override
   void initState() {
     super.initState();
     _filteredProducts = List<Map<String, dynamic>>.from(_allProducts);
     _fetchPoster();
+    _fetchMenu();
   }
 
   @override
@@ -67,6 +36,41 @@ class _BerandaPageState extends State<BerandaPage> {
     super.dispose();
   }
 
+  // Ambil Data Menu
+  Future<void> _fetchMenu() async {
+  setState(() => _isMenuLoading = true);
+
+  try {
+    final supabase = Supabase.instance.client;
+
+    final data = await supabase
+        .from('menu_items')
+        .select()
+        .eq('is_available', true)
+        .order('created_at', ascending: false);
+
+    setState(() {
+      _allProducts = data.map<Map<String, dynamic>>((item) {
+        return {
+          'name': item['name'],
+          'price': 'Rp ${item['price']}',
+          'harga': item['price'],
+          'image': item['image_url'],
+          'deskripsi': item['description'],
+        };
+      }).toList();
+
+      _filteredProducts = List.from(_allProducts);
+    });
+  } catch (e) {
+    debugPrint('ERROR FETCH MENU: $e');
+  }
+
+  setState(() => _isMenuLoading = false);
+}
+
+
+  // Ambil Data Poster
   Future<void> _fetchPoster() async {
   setState(() => _isPosterLoading = true);
 
@@ -190,7 +194,6 @@ class _BerandaPageState extends State<BerandaPage> {
                                   ? Builder(
                                       builder: (context) {
                                         print('POSTER URL: $_posterUrl');
-
                                         return ClipRRect(
                                           borderRadius: BorderRadius.circular(10),
                                           child: Image.network(
@@ -254,22 +257,22 @@ class _BerandaPageState extends State<BerandaPage> {
                       ],
                       
                       // Product Grid
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 12,
-                          mainAxisSpacing: 12,
-                          childAspectRatio: 0.75,
-                        ),
-                        itemCount: _filteredProducts.length,
-                        itemBuilder: (context, index) {
-                          return _buildProductCard(_filteredProducts[index]);
-                        },
-                      ),
-
+                        _isMenuLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : GridView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: _filteredProducts.length,
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 12,
+                              mainAxisSpacing: 12,
+                              childAspectRatio: 0.75,
+                            ),
+                            itemBuilder: (context, index) {
+                              return _buildProductCard(_filteredProducts[index]);
+                            },
+                          ),
                       const SizedBox(height: 16),
                     ],
                   ),
