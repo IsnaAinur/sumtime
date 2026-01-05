@@ -75,14 +75,16 @@ Future<void> _loadMenuFromSupabase() async {
 
     final response = await supabase
         .from('menu_items')
-        .select()
+        .select('id, name, description, price, image_url')
         .order('created_at', ascending: false);
 
     setState(() {
       _daftarMenu = response.map<Map<String, dynamic>>((item) {
         return {
+          "id": item['id'],
           "nama": item['name'],
           "harga": item['price'].toString(),
+          "deskripsi": item['description'],
           "image_url": item['image_url'],
         };
       }).toList();
@@ -221,39 +223,72 @@ Future<void> _loadMenuFromSupabase() async {
       _isEditMode = true;
       _editingIndex = index;
       _namaController.text = item["nama"] ?? "";
-      _deskripsiController.text = ""; // Deskripsi tidak disimpan sebelumnya
+      _deskripsiController.text = item["deskripsi"] ?? "";
+      _menuImageBytes = null; 
       _hargaController.text = item["harga"] ?? "";
     });
   }
 
   // Fungsi untuk menyimpan perubahan edit
-  void _saveEditedMenu() {
-    if (_namaController.text.isNotEmpty && _hargaController.text.isNotEmpty && _editingIndex != null) {
-      setState(() {
-        _daftarMenu[_editingIndex!] = {
-          "nama": _namaController.text,
-          "harga": _hargaController.text,
-        };
+  Future<void> _saveEditedMenu() async {
+  if (_editingIndex == null) return;
 
-        // Reset edit mode
-        _isEditMode = false;
-        _editingIndex = null;
+  final supabase = Supabase.instance.client;
 
-        // Clear form
-        _namaController.clear();
-        _deskripsiController.clear();
-        _hargaController.clear();
-      });
+  final menu = _daftarMenu[_editingIndex!]; // ✅ FIX
+  final menuId = menu['id'];
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Menu berhasil diperbarui')),
+  String imageUrl = menu['image_url']; // ✅ gambar lama
+
+  try {
+    // Jika pilih gambar baru
+    if (_menuImageBytes != null) {
+      final fileName = 'menu/${const Uuid().v4()}.jpg';
+
+      await supabase.storage.from('menu').uploadBinary(
+        fileName,
+        _menuImageBytes!,
+        fileOptions: const FileOptions(
+          contentType: 'image/jpeg',
+        ),
       );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nama menu dan harga harus diisi')),
-      );
+
+      imageUrl = supabase.storage.from('menu').getPublicUrl(fileName);
     }
+
+    // Update database
+    await supabase.from('menu_items').update({
+      'name': _namaController.text.trim(),
+      'description': _deskripsiController.text.trim(),
+      'price': int.parse(_hargaController.text),
+      'image_url': imageUrl, // ✅ GAMBAR TIDAK HILANG
+    }).eq('id', menuId);
+
+    await _loadMenuFromSupabase();
+
+    if (!mounted) return;
+
+    setState(() {
+      _isEditMode = false;
+      _editingIndex = null;
+      _menuImageBytes = null;
+    });
+
+    _namaController.clear();
+    _deskripsiController.clear();
+    _hargaController.clear();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Menu berhasil diperbarui')),
+    );
+  } catch (e) {
+    debugPrint('ERROR UPDATE MENU: $e');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal memperbarui menu')),
+    );
   }
+}
 
   // Fungsi untuk membatalkan edit
   void _cancelEdit() {
@@ -266,15 +301,63 @@ Future<void> _loadMenuFromSupabase() async {
     });
   }
 
-  // Fungsi untuk menghapus menu dari daftar
-  void _deleteMenuItem(int index) {
-    setState(() {
-      _daftarMenu.removeAt(index);
-    });
+Future<void> _deleteMenuFromSupabase(int index) async {
+  final supabase = Supabase.instance.client;
+  final menu = _daftarMenu[index];
+  final menuId = menu['id'];
+  final imageUrl = menu['image_url'];
+
+  try {
+    // 1️⃣ Hapus gambar dari Storage (jika ada)
+    if (imageUrl != null && imageUrl.toString().isNotEmpty) {
+      final uri = Uri.parse(imageUrl);
+      final fileName = uri.pathSegments.last;
+      await supabase.storage.from('menu').remove([fileName]);
+    }
+
+    // 2️⃣ Hapus data dari DB
+    await supabase.from('menu_items').delete().eq('id', menuId);
+
+    // 3️⃣ Reload menu
+    await _loadMenuFromSupabase();
+
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Menu berhasil dihapus')),
     );
+  } catch (e) {
+    debugPrint('ERROR DELETE MENU: $e');
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Gagal menghapus menu')),
+    );
   }
+}
+
+void _showDeleteConfirmation(int index) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Hapus Menu'),
+      content: const Text('Yakin ingin menghapus menu ini?'),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          onPressed: () {
+            Navigator.pop(context);
+            _deleteMenuFromSupabase(index);
+          },
+          child: const Text('Hapus'),
+        ),
+      ],
+    ),
+  );
+}
+
 
   @override
   Widget build(BuildContext context) {
@@ -692,7 +775,7 @@ Future<void> _loadMenuFromSupabase() async {
                     harga: item["harga"] ?? "-",
                     imageUrl: item["image_url"],
                     onEdit: () => _startEditMenu(i),
-                    onDelete: () => _deleteMenuItem(i),
+                    onDelete: () => _showDeleteConfirmation(i),
                   );
                 },
               ),
