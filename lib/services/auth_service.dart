@@ -4,6 +4,30 @@ import 'supabase_config.dart';
 class AuthService {
   final SupabaseClient _client = SupabaseConfig.client;
 
+  // Cache for admin status
+  bool? _cachedIsAdmin;
+  String? _cachedUserId;
+  DateTime? _adminStatusCacheTime;
+
+  // Cache duration (10 minutes for admin status)
+  static const Duration _adminCacheDuration = Duration(minutes: 10);
+
+  // Clear admin cache
+  void clearAdminCache() {
+    _cachedIsAdmin = null;
+    _cachedUserId = null;
+    _adminStatusCacheTime = null;
+  }
+
+  // Check if cache is valid for admin status
+  bool _isAdminCacheValid() {
+    return _cachedIsAdmin != null &&
+           _cachedUserId != null &&
+           _adminStatusCacheTime != null &&
+           _client.auth.currentUser?.id == _cachedUserId &&
+           DateTime.now().difference(_adminStatusCacheTime!) < _adminCacheDuration;
+  }
+
   // ======================
   // SIGN UP (DIPERBARUI)
   // ======================
@@ -67,8 +91,20 @@ class AuthService {
   // CHECK ADMIN ROLE
   // ======================
   Future<bool> isAdmin() async {
+    // Return cached value if valid
+    if (_isAdminCacheValid()) {
+      return _cachedIsAdmin!;
+    }
+
     final profile = await getUserProfile();
-    return profile?['role'] == 'admin';
+    final isAdmin = profile?['role'] == 'admin';
+
+    // Cache the result
+    _cachedIsAdmin = isAdmin;
+    _cachedUserId = _client.auth.currentUser?.id;
+    _adminStatusCacheTime = DateTime.now();
+
+    return isAdmin;
   }
 
   // ======================
@@ -76,5 +112,7 @@ class AuthService {
   // ======================
   Future<void> signOut() async {
     await _client.auth.signOut();
+    // Clear admin cache on logout
+    clearAdminCache();
   }
 }

@@ -387,13 +387,36 @@ class _CheckoutPageState extends State<CheckoutPage> {
               height: 50,
               child: ElevatedButton(
                 onPressed: () {
-                  // Navigate ke halaman pembayaran dengan data cart
+                  // Validate inputs
+                  if (_deliveryController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Harap isi lokasi pengiriman.'),
+                        backgroundColor: Color(0xFFDD0303),
+                      ),
+                    );
+                    return;
+                  }
+                  if (_phoneController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Harap isi nomor HP.'),
+                        backgroundColor: Color(0xFFDD0303),
+                      ),
+                    );
+                    return;
+                  }
+
+                  // Navigate ke halaman pembayaran dengan data cart dan delivery info
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (context) => PaymentPage(
                         cart: widget.cart,
                         shippingCost: deliveryFee,
+                        deliveryAddress: _deliveryController.text.trim(),
+                        phone: _phoneController.text.trim(),
+                        notes: _notesController.text.trim(),
                       ),
                     ),
                   );

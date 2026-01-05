@@ -4,6 +4,33 @@ import 'supabase_config.dart';
 class OrderService {
   final SupabaseClient _client = SupabaseConfig.client;
 
+  // Cache for order data
+  List<Map<String, dynamic>>? _cachedAllOrders;
+  List<Map<String, dynamic>>? _cachedUserOrders;
+  Map<String, dynamic>? _cachedStatistics;
+  DateTime? _ordersCacheTime;
+  DateTime? _userOrdersCacheTime;
+  DateTime? _statisticsCacheTime;
+
+  // Cache duration (5 minutes)
+  static const Duration _cacheDuration = Duration(minutes: 5);
+
+  // Clear all caches
+  void clearCache() {
+    _cachedAllOrders = null;
+    _cachedUserOrders = null;
+    _cachedStatistics = null;
+    _ordersCacheTime = null;
+    _userOrdersCacheTime = null;
+    _statisticsCacheTime = null;
+  }
+
+  // Check if cache is valid
+  bool _isCacheValid(DateTime? cacheTime) {
+    return cacheTime != null &&
+           DateTime.now().difference(cacheTime) < _cacheDuration;
+  }
+
   // Create new order
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> cartItems,
@@ -64,6 +91,9 @@ class OrderService {
 
       await _client.from('order_items').insert(orderItems);
 
+      // Clear caches since new order was created
+      clearCache();
+
       // Return order with items
       return await getOrderDetails(orderId);
     } catch (e) {
@@ -72,29 +102,73 @@ class OrderService {
   }
 
   // Get user orders
-  Future<List<Map<String, dynamic>>> getUserOrders() async {
+  Future<List<Map<String, dynamic>>> getUserOrders({int? limit, int? offset}) async {
+    // Return cached data if valid
+    if (_cachedUserOrders != null && _isCacheValid(_userOrdersCacheTime)) {
+      return _cachedUserOrders!;
+    }
+
     try {
       final user = _client.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
       // Get orders first
-      final ordersResponse = await _client
+      var query = _client
           .from('orders')
           .select('*')
           .eq('user_id', user.id)
           .order('order_date', ascending: false);
 
+      // Apply pagination if provided
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+      if (offset != null) {
+        query = query.range(offset, offset + (limit ?? 50) - 1);
+      }
+
+      final ordersResponse = await query;
+
       final orders = List<Map<String, dynamic>>.from(ordersResponse);
 
-      // Get order items for each order
-      for (var order in orders) {
-        final itemsResponse = await _client
-            .from('order_items')
-            .select('item_name, item_price, quantity')
-            .eq('order_id', order['id']);
-
-        order['order_items'] = List<Map<String, dynamic>>.from(itemsResponse);
+      if (orders.isEmpty) {
+        _cachedUserOrders = orders;
+        _userOrdersCacheTime = DateTime.now();
+        return orders;
       }
+
+      // Get all order IDs
+      final orderIds = orders.map((order) => order['id']).toList();
+
+      // Batch fetch all order items for all orders in one query
+      final itemsResponse = await _client
+          .from('order_items')
+          .select('order_id, item_name, item_price, quantity')
+          .inFilter('order_id', orderIds);
+
+      // Group items by order_id
+      final Map<String, List<Map<String, dynamic>>> itemsByOrderId = {};
+      for (final item in itemsResponse) {
+        final orderId = item['order_id'];
+        if (!itemsByOrderId.containsKey(orderId)) {
+          itemsByOrderId[orderId] = [];
+        }
+        itemsByOrderId[orderId]!.add({
+          'item_name': item['item_name'],
+          'item_price': item['item_price'],
+          'quantity': item['quantity'],
+        });
+      }
+
+      // Attach items to orders
+      for (var order in orders) {
+        final orderId = order['id'];
+        order['order_items'] = itemsByOrderId[orderId] ?? [];
+      }
+
+      // Cache the result
+      _cachedUserOrders = orders;
+      _userOrdersCacheTime = DateTime.now();
 
       return orders;
     } catch (e) {
@@ -103,25 +177,69 @@ class OrderService {
   }
 
   // Get all orders (admin only)
-  Future<List<Map<String, dynamic>>> getAllOrders() async {
+  Future<List<Map<String, dynamic>>> getAllOrders({int? limit, int? offset}) async {
+    // Return cached data if valid
+    if (_cachedAllOrders != null && _isCacheValid(_ordersCacheTime)) {
+      return _cachedAllOrders!;
+    }
+
     try {
-      // Get orders with user info
-      final ordersResponse = await _client
+      // Get all orders with user info in one query
+      var query = _client
           .from('orders')
           .select('*, users(username, email)')
           .order('order_date', ascending: false);
 
+      // Apply pagination if provided
+      if (limit != null) {
+        query = query.limit(limit);
+      }
+      if (offset != null) {
+        query = query.range(offset, offset + (limit ?? 50) - 1);
+      }
+
+      final ordersResponse = await query;
+
       final orders = List<Map<String, dynamic>>.from(ordersResponse);
 
-      // Get order items for each order
-      for (var order in orders) {
-        final itemsResponse = await _client
-            .from('order_items')
-            .select('item_name, item_price, quantity')
-            .eq('order_id', order['id']);
-
-        order['order_items'] = List<Map<String, dynamic>>.from(itemsResponse);
+      if (orders.isEmpty) {
+        _cachedAllOrders = orders;
+        _ordersCacheTime = DateTime.now();
+        return orders;
       }
+
+      // Get all order IDs
+      final orderIds = orders.map((order) => order['id']).toList();
+
+      // Batch fetch all order items for all orders in one query
+      final itemsResponse = await _client
+          .from('order_items')
+          .select('order_id, item_name, item_price, quantity')
+          .inFilter('order_id', orderIds);
+
+      // Group items by order_id
+      final Map<String, List<Map<String, dynamic>>> itemsByOrderId = {};
+      for (final item in itemsResponse) {
+        final orderId = item['order_id'];
+        if (!itemsByOrderId.containsKey(orderId)) {
+          itemsByOrderId[orderId] = [];
+        }
+        itemsByOrderId[orderId]!.add({
+          'item_name': item['item_name'],
+          'item_price': item['item_price'],
+          'quantity': item['quantity'],
+        });
+      }
+
+      // Attach items to orders
+      for (var order in orders) {
+        final orderId = order['id'];
+        order['order_items'] = itemsByOrderId[orderId] ?? [];
+      }
+
+      // Cache the result
+      _cachedAllOrders = orders;
+      _ordersCacheTime = DateTime.now();
 
       return orders;
     } catch (e) {
@@ -161,6 +279,9 @@ class OrderService {
           .from('orders')
           .update({'status': newStatus})
           .eq('id', orderId);
+
+      // Clear caches since order data has changed
+      clearCache();
     } catch (e) {
       throw Exception('Failed to update order status: $e');
     }
@@ -169,7 +290,7 @@ class OrderService {
   // Get orders by status (for admin dashboard)
   Future<List<Map<String, dynamic>>> getOrdersByStatus(int status) async {
     try {
-      // Get orders with user info
+      // Get orders with user info in one query
       final ordersResponse = await _client
           .from('orders')
           .select('*, users(username, email)')
@@ -178,14 +299,35 @@ class OrderService {
 
       final orders = List<Map<String, dynamic>>.from(ordersResponse);
 
-      // Get order items for each order
-      for (var order in orders) {
-        final itemsResponse = await _client
-            .from('order_items')
-            .select('item_name, item_price, quantity')
-            .eq('order_id', order['id']);
+      if (orders.isEmpty) return orders;
 
-        order['order_items'] = List<Map<String, dynamic>>.from(itemsResponse);
+      // Get all order IDs
+      final orderIds = orders.map((order) => order['id']).toList();
+
+      // Batch fetch all order items for all orders in one query
+      final itemsResponse = await _client
+          .from('order_items')
+          .select('order_id, item_name, item_price, quantity')
+          .inFilter('order_id', orderIds);
+
+      // Group items by order_id
+      final Map<String, List<Map<String, dynamic>>> itemsByOrderId = {};
+      for (final item in itemsResponse) {
+        final orderId = item['order_id'];
+        if (!itemsByOrderId.containsKey(orderId)) {
+          itemsByOrderId[orderId] = [];
+        }
+        itemsByOrderId[orderId]!.add({
+          'item_name': item['item_name'],
+          'item_price': item['item_price'],
+          'quantity': item['quantity'],
+        });
+      }
+
+      // Attach items to orders
+      for (var order in orders) {
+        final orderId = order['id'];
+        order['order_items'] = itemsByOrderId[orderId] ?? [];
       }
 
       return orders;
@@ -196,15 +338,20 @@ class OrderService {
 
   // Get order statistics (for admin)
   Future<Map<String, dynamic>> getOrderStatistics() async {
+    // Return cached data if valid
+    if (_cachedStatistics != null && _isCacheValid(_statisticsCacheTime)) {
+      return _cachedStatistics!;
+    }
+
     try {
-      // Get all orders for counting
+      // Get all orders in one query with only necessary fields
       final allOrders = await _client
           .from('orders')
-          .select('id, status, total_amount');
+          .select('status, total_amount');
 
       final orders = List<Map<String, dynamic>>.from(allOrders);
 
-      // Count orders by status
+      // Count orders by status and calculate revenue in memory
       final statusCounts = <String, int>{};
       int totalRevenue = 0;
 
@@ -218,22 +365,28 @@ class OrderService {
         }
       }
 
-      return {
+      final statistics = {
         'total_orders': orders.length,
         'completed_orders': statusCounts['status_3'] ?? 0,
         'pending_orders': (statusCounts['status_0'] ?? 0) + (statusCounts['status_1'] ?? 0) + (statusCounts['status_2'] ?? 0),
         'total_revenue': totalRevenue,
         'status_breakdown': statusCounts,
       };
+
+      // Cache the result
+      _cachedStatistics = statistics;
+      _statisticsCacheTime = DateTime.now();
+
+      return statistics;
     } catch (e) {
       throw Exception('Failed to get order statistics: $e');
     }
   }
 
   // Helper method to convert database order to OrderItem format
-  Future<List<Map<String, dynamic>>> getOrdersFormatted({bool isAdmin = false}) async {
+  Future<List<Map<String, dynamic>>> getOrdersFormatted({bool isAdmin = false, int? limit, int? offset}) async {
     try {
-      final orders = isAdmin ? await getAllOrders() : await getUserOrders();
+      final orders = isAdmin ? await getAllOrders(limit: limit, offset: offset) : await getUserOrders(limit: limit, offset: offset);
 
       return orders.map((order) {
         final orderItems = (order['order_items'] as List<dynamic>? ?? [])
@@ -287,29 +440,44 @@ class OrderService {
   // Get orders for admin dashboard (ongoing vs completed)
   Future<List<Map<String, dynamic>>> getOrdersForAdmin({required bool isCompleted}) async {
     try {
+      // Get orders with user info in one query
       final ordersResponse = await _client
           .from('orders')
           .select('*, users(username, email)')
-          .eq('status', isCompleted ? 3 : 0) // First get one status, then filter manually
+          .inFilter('status', isCompleted ? [3] : [0, 1, 2])
           .order('order_date', ascending: false);
 
-      // For ongoing orders, we need multiple statuses, so get all and filter
-      final orders = isCompleted
-          ? List<Map<String, dynamic>>.from(ordersResponse)
-          : await _client
-              .from('orders')
-              .select('*, users(username, email)')
-              .inFilter('status', [0, 1, 2])
-              .order('order_date', ascending: false);
+      final orders = List<Map<String, dynamic>>.from(ordersResponse);
 
-      // Get order items for each order
+      if (orders.isEmpty) return orders;
+
+      // Get all order IDs
+      final orderIds = orders.map((order) => order['id']).toList();
+
+      // Batch fetch all order items for all orders in one query
+      final itemsResponse = await _client
+          .from('order_items')
+          .select('order_id, item_name, item_price, quantity')
+          .inFilter('order_id', orderIds);
+
+      // Group items by order_id
+      final Map<String, List<Map<String, dynamic>>> itemsByOrderId = {};
+      for (final item in itemsResponse) {
+        final orderId = item['order_id'];
+        if (!itemsByOrderId.containsKey(orderId)) {
+          itemsByOrderId[orderId] = [];
+        }
+        itemsByOrderId[orderId]!.add({
+          'item_name': item['item_name'],
+          'item_price': item['item_price'],
+          'quantity': item['quantity'],
+        });
+      }
+
+      // Attach items to orders
       for (var order in orders) {
-        final itemsResponse = await _client
-            .from('order_items')
-            .select('item_name, item_price, quantity')
-            .eq('order_id', order['id']);
-
-        order['order_items'] = List<Map<String, dynamic>>.from(itemsResponse);
+        final orderId = order['id'];
+        order['order_items'] = itemsByOrderId[orderId] ?? [];
       }
 
       return orders.map((order) {

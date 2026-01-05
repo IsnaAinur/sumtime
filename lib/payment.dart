@@ -4,16 +4,22 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'rincianpesanan.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:path/path.dart' as p;
+import 'services/order_service.dart';
 
 class PaymentPage extends StatefulWidget {
   final List<Map<String, dynamic>> cart;
   final int shippingCost;
+  final String deliveryAddress;
+  final String phone;
+  final String notes;
 
   const PaymentPage({
     super.key,
     required this.cart,
     required this.shippingCost,
+    required this.deliveryAddress,
+    required this.phone,
+    this.notes = '',
   });
 
   @override
@@ -22,29 +28,15 @@ class PaymentPage extends StatefulWidget {
 
 class _PaymentPageState extends State<PaymentPage> {
   final supabase = Supabase.instance.client;
+  final OrderService _orderService = OrderService();
   bool _isLoading = false;
 
   File? _paymentProofFile;
   Uint8List? _paymentProofBytes;
   final ImagePicker _picker = ImagePicker();
 
-  int _calculateTotalAmount() {
-    int total = widget.shippingCost;
-
-    for (final item in widget.cart) {
-      final harga = (item['harga'] ?? item['price'] ?? 0) as int;
-      final qty = (item['quantity'] ?? item['qty'] ?? 1) as int;
-
-      total += harga * qty;
-    }
-
-    return total;
-  }
-
   Future<String?> _uploadProofToSupabase(String orderNumber) async {
     try {
-      setState(() => _isLoading = true);
-
       final fileName =
           "bukti-$orderNumber-${DateTime.now().millisecondsSinceEpoch}.jpg";
       final filePath = "bukti/$fileName";
@@ -92,38 +84,6 @@ class _PaymentPageState extends State<PaymentPage> {
       }
 
       return null;
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  Future<bool> _saveProofToDatabase(String orderNumber, String proofUrl) async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-
-      await supabase.from('orders').upsert({
-        'order_id': orderNumber,
-        'user_id': userId,
-        'total_amount': _calculateTotalAmount(),
-        'payment_proof_url': proofUrl,
-        'payment_status': 'menunggu',
-      }, onConflict: 'order_id');
-
-      return true;
-    } catch (e) {
-      debugPrint("Save DB error: $e");
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("DB error: $e"),
-            backgroundColor: Colors.red,
-            duration: const Duration(seconds: 6),
-          ),
-        );
-      }
-
-      return false;
     }
   }
 
@@ -177,53 +137,70 @@ class _PaymentPageState extends State<PaymentPage> {
       return;
     }
 
-    final orderNumber =
-        'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+    setState(() => _isLoading = true);
 
-    final proofUrl = await _uploadProofToSupabase(orderNumber);
+    try {
+      // Step 1: Create order using OrderService (this saves to orders AND order_items)
+      final orderData = await _orderService.createOrder(
+        cartItems: widget.cart,
+        shippingCost: widget.shippingCost,
+        deliveryAddress: widget.deliveryAddress,
+        phone: widget.phone,
+        notes: widget.notes.isNotEmpty ? widget.notes : null,
+      );
 
-    if (proofUrl == null) {
+      final orderId = orderData['id'] as String;
+      final orderNumber = orderData['order_id'] as String;
+
+      // Step 2: Upload payment proof
+      final proofUrl = await _uploadProofToSupabase(orderNumber);
+
+      if (proofUrl != null) {
+        // Step 3: Update order with payment proof URL
+        await supabase.from('orders').update({
+          'payment_proof_url': proofUrl,
+          'payment_status': 'menunggu',
+        }).eq('id', orderId);
+      }
+
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Upload bukti pembayaran gagal.'),
-          backgroundColor: Color(0xFFE94E4E),
+
+      // Navigate to order details page
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => RincianPesananPage(
+            orderItems: (orderData['order_items'] as List<dynamic>)
+                .map((item) => {
+                      'name': item['item_name'],
+                      'price': 'Rp ${item['item_price']}',
+                      'harga': item['item_price'],
+                      'quantity': item['quantity'],
+                    })
+                .toList(),
+            shippingCost: widget.shippingCost,
+            orderNumber: orderNumber,
+            orderDate: DateTime.now(),
+            currentStatus: 0,
+          ),
         ),
       );
-      return;
-    }
+    } catch (e) {
+      debugPrint("Process payment error: $e");
 
-    final saved = await _saveProofToDatabase(orderNumber, proofUrl);
-
-    if (!saved) {
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Gagal menyimpan bukti ke database.'),
-          backgroundColor: Color(0xFFE94E4E),
+        SnackBar(
+          content: Text('Gagal memproses pesanan: $e'),
+          backgroundColor: const Color(0xFFE94E4E),
+          duration: const Duration(seconds: 6),
         ),
       );
-      return;
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
-
-    if (!mounted) return;
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder:
-            (context) => RincianPesananPage(
-              orderItems: widget.cart,
-              shippingCost: widget.shippingCost,
-              orderNumber: orderNumber,
-              orderDate: DateTime.now(),
-              currentStatus: 1,
-            ),
-      ),
-    );
   }
-}
-
 
   @override
   Widget build(BuildContext context) {

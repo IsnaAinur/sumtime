@@ -1,28 +1,6 @@
 import 'package:flutter/material.dart';
 import 'rincianpesanan.dart';
-
-class GlobalOrderData {//..........................................
-  // List static untuk menampung semua pesanan
-  static List<OrderItem> allOrders = [
-    // Data awal (dummy)
-    OrderItem(
-      orderId: 'ORD-1001',
-      priceText: '81.000',
-      orderItems: [
-        {'name': 'Dimsum Ayam', 'harga': 25000, 'quantity': 1},
-        {'name': 'Dimsum Udang', 'harga': 28000, 'quantity': 2},
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(hours: 2)),
-      status: 1,
-    ),
-  ];
-
-  // Fungsi untuk menambah pesanan baru
-  static void addOrder(OrderItem newOrder) {
-    allOrders.insert(0, newOrder); // Tambah di paling atas
-  }
-}//.....................................................................
+import 'services/order_service.dart';
 
 class HistoryPesananPage extends StatefulWidget {
   const HistoryPesananPage({super.key});
@@ -36,159 +14,54 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
 
   int selectedTab = 0; // 0: Berlangsung, 1: Selesai
   int _currentIndex = 1; // Bottom nav index, 1 = History
-  
-  // Data pesanan berlangsung (status 0-2)
-  final List<OrderItem> berlangsung = [
-    OrderItem(
-      orderId: 'ORD-1001',
-      priceText: 'Rp. 81.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 2,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(hours: 2)),
-      status: 1, // Pesanan Dibuatkan
-    ),
-    OrderItem(
-      orderId: 'ORD-1002',
-      priceText: 'Rp. 120.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 3,
-        },
-        {
-          'name': 'Es Jeruk',
-          'price': 'Rp 15.000',
-          'harga': 15000,
-          'quantity': 3,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(hours: 5)),
-      status: 2, // Makanan dalam Pengantaran
-    ),
-    OrderItem(
-      orderId: 'ORD-1003',
-      priceText: 'Rp. 67.500',
-      orderItems: [
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Teh',
-          'price': 'Rp 12.000',
-          'harga': 12000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(minutes: 30)),
-      status: 0, // Pesanan Diterima
-    ),
-  ];
 
-  // Data pesanan selesai (status 3)
-  final List<OrderItem> selesai = [
-    OrderItem(
-      orderId: 'ORD-0901',
-      priceText: 'Rp. 99.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 2,
-        },
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Jeruk',
-          'price': 'Rp 15.000',
-          'harga': 15000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(days: 2)),
-      status: 3, // Selesai
-    ),
-    OrderItem(
-      orderId: 'ORD-0902',
-      priceText: 'Rp. 50.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Teh',
-          'price': 'Rp 12.000',
-          'harga': 12000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(days: 5)),
-      status: 3, // Selesai
-    ),
-  ];
+  final OrderService _orderService = OrderService();
+  late Future<List<Map<String, dynamic>>> _ordersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = _fetchOrders();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchOrders() async {
+    try {
+      return await _orderService.getOrdersFormatted();
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+      return [];
+    }
+  }
+
+  void _refreshOrders() {
+    setState(() {
+      _ordersFuture = _fetchOrders();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    
-    final berlangsung = GlobalOrderData.allOrders
-        .where((order) => order.status >= 0 && order.status <= 2)
-        .toList();
-        
-    final selesai = GlobalOrderData.allOrders
-        .where((order) => order.status == 3)
-        .toList();
-    
-    final items = selectedTab == 0 ? berlangsung : selesai;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
-
-        // supaya title ada di samping tombol back
         centerTitle: false,
-
-        // tombol kembali
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: kRed),
           onPressed: () => Navigator.maybePop(context),
         ),
-
-        // title samping tombol
         title: const Text(
           'History Pesanan',
           style: TextStyle(color: kRed, fontWeight: FontWeight.w800),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: kRed),
+            onPressed: _refreshOrders,
+            tooltip: 'Refresh',
+          ),
+        ],
       ),
       body: SafeArea(
         child: Padding(
@@ -202,28 +75,114 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final it = items[index];
-                    return _OrderCard(
-                      red: kRed,
-                      orderId: it.orderId,
-                      priceText: it.priceText,
-                      onTap: () {
-                        // Navigasi ke halaman rincian pesanan dengan data lengkap
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => RincianPesananPage(
-                              orderItems: it.orderItems,
-                              shippingCost: it.shippingCost,
-                              orderNumber: it.orderId,
-                              orderDate: it.orderDate,
-                              currentStatus: it.status,
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _ordersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: kRed),
+                      );
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, color: kRed, size: 48),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Gagal memuat pesanan',
+                              style: TextStyle(color: Colors.grey[600]),
                             ),
-                          ),
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: _refreshOrders,
+                              style: ElevatedButton.styleFrom(backgroundColor: kRed),
+                              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final allOrders = snapshot.data ?? [];
+
+                    // Filter orders based on selected tab
+                    // Berlangsung: status < 3, Selesai: status == 3
+                    final filteredOrders = allOrders.where((order) {
+                      final status = order['status'] as int? ?? 0;
+                      if (selectedTab == 0) {
+                        return status < 3; // Berlangsung
+                      } else {
+                        return status == 3; // Selesai
+                      }
+                    }).toList();
+
+                    if (filteredOrders.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              selectedTab == 0 ? Icons.pending_actions : Icons.check_circle_outline,
+                              color: Colors.grey[400],
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              selectedTab == 0
+                                  ? 'Tidak ada pesanan berlangsung'
+                                  : 'Belum ada pesanan selesai',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      itemCount: filteredOrders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final order = filteredOrders[index];
+                        return _OrderCard(
+                          red: kRed,
+                          orderId: order['orderId'] ?? 'N/A',
+                          priceText: order['priceText'] ?? 'Rp. 0',
+                          onTap: () {
+                            // Parse orderDate
+                            DateTime orderDate;
+                            final dateValue = order['orderDate'];
+                            if (dateValue is DateTime) {
+                              orderDate = dateValue;
+                            } else if (dateValue is String) {
+                              orderDate = DateTime.tryParse(dateValue) ?? DateTime.now();
+                            } else {
+                              orderDate = DateTime.now();
+                            }
+
+                            // Convert orderItems to required format
+                            final orderItems = (order['orderItems'] as List<dynamic>? ?? [])
+                                .map((item) => Map<String, dynamic>.from(item as Map))
+                                .toList();
+
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => RincianPesananPage(
+                                  orderItems: orderItems,
+                                  shippingCost: order['shippingCost'] ?? 10000,
+                                  orderNumber: order['orderId'] ?? 'N/A',
+                                  orderDate: orderDate,
+                                  currentStatus: order['status'] ?? 0,
+                                ),
+                              ),
+                            );
+                          },
                         );
                       },
                     );
@@ -238,10 +197,8 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
         currentIndex: _currentIndex,
         onTap: (index) {
           if (index == 0) {
-            // Navigasi ke halaman beranda
             Navigator.pushReplacementNamed(context, '/home');
           } else if (index == 2) {
-            // Navigasi ke halaman profil
             Navigator.pushNamed(context, '/profile');
           } else {
             setState(() {
@@ -401,7 +358,7 @@ class _OrderCard extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Text(
-                'Rp. $priceText'.replaceFirst('Rp. Rp.', 'Rp. '),
+                priceText,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 14,
@@ -414,22 +371,4 @@ class _OrderCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class OrderItem {
-  final String orderId;
-  final String priceText;
-  final List<Map<String, dynamic>> orderItems;
-  final int shippingCost;
-  final DateTime orderDate;
-  final int status; // 0: Diterima, 1: Dibuatkan, 2: Pengantaran, 3: Selesai
-
-  const OrderItem({
-    required this.orderId,
-    required this.priceText,
-    required this.orderItems,
-    required this.shippingCost,
-    required this.orderDate,
-    required this.status,
-  });
 }

@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../login.dart';
 import 'pemesanan.dart';
 import 'nav._bottom.dart';
+import '../services/order_service.dart';
 
 class OrderPage extends StatefulWidget {
   const OrderPage({super.key});
@@ -16,26 +17,53 @@ class _OrderPageState extends State<OrderPage> {
 
   int selectedTab = 0; // 0: Berlangsung, 1: Selesai
 
-  // Method untuk mengubah status pesanan
-  void _updateOrderStatus(String orderId, int newStatus) {
+  final OrderService _orderService = OrderService();
+  late Future<List<Map<String, dynamic>>> _ordersFuture;
+  bool _isUpdating = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersFuture = _fetchOrders();
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchOrders() async {
+    try {
+      return await _orderService.getOrdersFormatted(isAdmin: true);
+    } catch (e) {
+      debugPrint('Error fetching orders: $e');
+      return [];
+    }
+  }
+
+  void _refreshOrders() {
     setState(() {
-      // Update status di data berlangsung
-      for (var item in berlangsung) {
-        if (item.orderId == orderId) {
-          // Buat item baru dengan status yang diperbarui
-          final updatedItem = OrderItem(
-            orderId: item.orderId,
-            priceText: item.priceText,
-            orderItems: item.orderItems,
-            shippingCost: item.shippingCost,
-            orderDate: item.orderDate,
-            status: newStatus,
-          );
-          berlangsung[berlangsung.indexOf(item)] = updatedItem;
-          break;
-        }
-      }
+      _ordersFuture = _fetchOrders();
     });
+  }
+
+  // Method untuk mengubah status pesanan di database
+  Future<void> _updateOrderStatus(String orderId, int newStatus) async {
+    if (_isUpdating) return;
+
+    setState(() => _isUpdating = true);
+
+    try {
+      await _orderService.updateOrderStatus(orderId, newStatus);
+      _refreshOrders(); // Refresh data setelah update
+    } catch (e) {
+      debugPrint('Error updating order status: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Gagal mengupdate status: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
   }
 
   // Method untuk menampilkan dialog logout
@@ -91,129 +119,8 @@ class _OrderPageState extends State<OrderPage> {
     );
   }
 
-  // Data pesanan berlangsung (status 0-2)
-  final List<OrderItem> berlangsung = [
-    OrderItem(
-      orderId: 'ORD-1001',
-      priceText: 'Rp. 81.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 2,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(hours: 2)),
-      status: 1, // Pesanan Dibuatkan
-    ),
-    OrderItem(
-      orderId: 'ORD-1002',
-      priceText: 'Rp. 120.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 3,
-        },
-        {
-          'name': 'Es Jeruk',
-          'price': 'Rp 15.000',
-          'harga': 15000,
-          'quantity': 3,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(hours: 5)),
-      status: 2, // Makanan dalam Pengantaran
-    ),
-    OrderItem(
-      orderId: 'ORD-1003',
-      priceText: 'Rp. 67.500',
-      orderItems: [
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Teh',
-          'price': 'Rp 12.000',
-          'harga': 12000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(minutes: 30)),
-      status: 0, // Pesanan Diterima
-    ),
-  ];
-
-  // Data pesanan selesai (status 3)
-  final List<OrderItem> selesai = [
-    OrderItem(
-      orderId: 'ORD-0901',
-      priceText: 'Rp. 99.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 2,
-        },
-        {
-          'name': 'Dimsum Udang',
-          'price': 'Rp 28.000',
-          'harga': 28000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Jeruk',
-          'price': 'Rp 15.000',
-          'harga': 15000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(days: 2)),
-      status: 3, // Selesai
-    ),
-    OrderItem(
-      orderId: 'ORD-0902',
-      priceText: 'Rp. 50.000',
-      orderItems: [
-        {
-          'name': 'Dimsum Ayam',
-          'price': 'Rp 25.000',
-          'harga': 25000,
-          'quantity': 1,
-        },
-        {
-          'name': 'Es Teh',
-          'price': 'Rp 12.000',
-          'harga': 12000,
-          'quantity': 1,
-        },
-      ],
-      shippingCost: 10000,
-      orderDate: DateTime.now().subtract(const Duration(days: 5)),
-      status: 3, // Selesai
-    ),
-  ];
-
   @override
   Widget build(BuildContext context) {
-    final items = selectedTab == 0 ? berlangsung : selesai;
-
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -229,11 +136,13 @@ class _OrderPageState extends State<OrderPage> {
         ),
         actions: [
           IconButton(
+            onPressed: _refreshOrders,
+            icon: const Icon(Icons.refresh, color: kRed),
+            tooltip: 'Refresh',
+          ),
+          IconButton(
             onPressed: () => _showLogoutDialog(context),
-            icon: const Icon(
-              Icons.logout,
-              color: kRed,
-            ),
+            icon: const Icon(Icons.logout, color: kRed),
             tooltip: 'Logout',
           ),
         ],
@@ -251,53 +160,154 @@ class _OrderPageState extends State<OrderPage> {
               ),
               const SizedBox(height: 16),
               Expanded(
-                child: ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final it = items[index];
-                    return _OrderCard(
-                      red: kRed,
-                      orderId: it.orderId,
-                      priceText: it.priceText,
-                      status: it.status,
-                      onAccept: () {
-                        // Logika untuk menerima pesanan - bisa menyesuaikan berdasarkan status saat ini
-                        String message;
-                        if (it.status == 0) {
-                          _updateOrderStatus(it.orderId, 1);
-                          message = 'Pesanan ${it.orderId} diterima dan sedang diproses!';
-                        } else if (it.status == 1) {
-                          _updateOrderStatus(it.orderId, 2);
-                          message = 'Pesanan ${it.orderId} siap untuk pengantaran!';
-                        } else if (it.status == 2) {
-                          _updateOrderStatus(it.orderId, 3);
-                          message = 'Pesanan ${it.orderId} telah selesai!';
-                        } else {
-                          message = 'Pesanan ${it.orderId} sudah selesai!';
-                        }
+                child: FutureBuilder<List<Map<String, dynamic>>>(
+                  future: _ordersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(
+                        child: CircularProgressIndicator(color: kRed),
+                      );
+                    }
 
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(message),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                      },
-                      onTap: () {
-                        // Navigasi ke halaman pemesanan dengan data lengkap
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => PemesananPage(
-                              orderItems: it.orderItems,
-                              shippingCost: it.shippingCost,
-                              orderNumber: it.orderId,
-                              currentStatus: it.status,
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.error_outline, color: kRed, size: 48),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Gagal memuat pesanan',
+                              style: TextStyle(color: Colors.grey[600]),
                             ),
-                          ),
-                        );
-                      },
+                            const SizedBox(height: 8),
+                            ElevatedButton(
+                              onPressed: _refreshOrders,
+                              style: ElevatedButton.styleFrom(backgroundColor: kRed),
+                              child: const Text('Coba Lagi', style: TextStyle(color: Colors.white)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final allOrders = snapshot.data ?? [];
+
+                    // Filter orders based on selected tab
+                    // Berlangsung: status < 3, Selesai: status == 3
+                    final filteredOrders = allOrders.where((order) {
+                      final status = order['status'] as int? ?? 0;
+                      if (selectedTab == 0) {
+                        return status < 3; // Berlangsung (0, 1, 2)
+                      } else {
+                        return status == 3; // Selesai
+                      }
+                    }).toList();
+
+                    if (filteredOrders.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              selectedTab == 0 ? Icons.pending_actions : Icons.check_circle_outline,
+                              color: Colors.grey[400],
+                              size: 64,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              selectedTab == 0
+                                  ? 'Tidak ada pesanan berlangsung'
+                                  : 'Belum ada pesanan selesai',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return RefreshIndicator(
+                      onRefresh: () async => _refreshOrders(),
+                      color: kRed,
+                      child: ListView.separated(
+                        itemCount: filteredOrders.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final order = filteredOrders[index];
+                          final orderId = order['id'] as String? ?? '';
+                          final orderNumber = order['orderId'] as String? ?? 'N/A';
+                          final status = order['status'] as int? ?? 0;
+
+                          return _OrderCard(
+                            red: kRed,
+                            orderId: orderNumber,
+                            priceText: order['priceText'] ?? 'Rp. 0',
+                            status: status,
+                            isUpdating: _isUpdating,
+                            onAccept: () async {
+                              // Logic untuk update status
+                              String message;
+                              int newStatus;
+
+                              if (status == 0) {
+                                newStatus = 1;
+                                message = 'Pesanan $orderNumber diterima dan sedang diproses!';
+                              } else if (status == 1) {
+                                newStatus = 2;
+                                message = 'Pesanan $orderNumber siap untuk pengantaran!';
+                              } else if (status == 2) {
+                                newStatus = 3;
+                                message = 'Pesanan $orderNumber telah selesai!';
+                              } else {
+                                return; // Already complete
+                              }
+
+                              await _updateOrderStatus(orderId, newStatus);
+
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(message),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            onTap: () {
+                              // Parse orderDate
+                              DateTime orderDate;
+                              final dateValue = order['orderDate'];
+                              if (dateValue is DateTime) {
+                                orderDate = dateValue;
+                              } else if (dateValue is String) {
+                                orderDate = DateTime.tryParse(dateValue) ?? DateTime.now();
+                              } else {
+                                orderDate = DateTime.now();
+                              }
+
+                              // Convert orderItems to required format
+                              final orderItems = (order['orderItems'] as List<dynamic>? ?? [])
+                                  .map((item) => Map<String, dynamic>.from(item as Map))
+                                  .toList();
+
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => PemesananPage(
+                                    orderItems: orderItems,
+                                    shippingCost: order['shippingCost'] ?? 10000,
+                                    orderNumber: orderNumber,
+                                    currentStatus: status,
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      ),
                     );
                   },
                 ),
@@ -306,7 +316,6 @@ class _OrderPageState extends State<OrderPage> {
           ),
         ),
       ),
-
       bottomNavigationBar: const AdminBottomNav(currentIndex: 0),
     );
   }
@@ -404,6 +413,7 @@ class _OrderCard extends StatelessWidget {
   final String orderId;
   final String priceText;
   final int status;
+  final bool isUpdating;
   final VoidCallback? onTap;
   final VoidCallback? onAccept;
 
@@ -412,9 +422,25 @@ class _OrderCard extends StatelessWidget {
     required this.orderId,
     required this.priceText,
     required this.status,
+    this.isUpdating = false,
     this.onTap,
     this.onAccept,
   });
+
+  String _getStatusText() {
+    switch (status) {
+      case 0:
+        return 'Terima';
+      case 1:
+        return 'Proses';
+      case 2:
+        return 'Antar';
+      case 3:
+        return 'Selesai';
+      default:
+        return 'Unknown';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -449,7 +475,7 @@ class _OrderCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Rp. $priceText'.replaceFirst('Rp. Rp.', 'Rp. '),
+                    priceText,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 14,
@@ -472,71 +498,47 @@ class _OrderCard extends StatelessWidget {
   }
 
   Widget _buildStatusButton() {
-    if (status == 0) {
-      // Status 0: Tombol "Terima" (aktif)
-      return ElevatedButton(
-        onPressed: onAccept,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: red,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 8,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 2,
+    // Status 3 = Selesai, don't show action button
+    if (status == 3) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
-          'Terima',
+          '✓ Selesai',
           style: TextStyle(
+            color: Colors.green,
             fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-    } else {
-      // Status >= 1: Tombol "Sedang berlangsung" (disabled)
-      return ElevatedButton(
-        onPressed: null, // Disabled button
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.white,
-          foregroundColor: Colors.black87,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: 6,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
-          elevation: 1,
-        ),
-        child: const Text(
-          'Sedang berlangsung',
-          style: TextStyle(
             fontSize: 12,
-            fontWeight: FontWeight.w500,
           ),
         ),
       );
     }
+
+    // Status 0, 1, 2 = Action buttons
+    return ElevatedButton(
+      onPressed: isUpdating ? null : onAccept,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: Colors.white,
+        foregroundColor: red,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        elevation: 2,
+      ),
+      child: isUpdating
+          ? const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : Text(
+              _getStatusText(),
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
+    );
   }
-}
-
-class OrderItem {
-  final String orderId;
-  final String priceText;
-  final List<Map<String, dynamic>> orderItems;
-  final int shippingCost;
-  final DateTime orderDate;
-  final int status; // 0: Diterima, 1: Dibuatkan, 2: Pengantaran, 3: Selesai
-
-  const OrderItem({
-    required this.orderId,
-    required this.priceText,
-    required this.orderItems,
-    required this.shippingCost,
-    required this.orderDate,
-    required this.status,
-  });
 }
