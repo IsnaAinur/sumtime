@@ -301,6 +301,9 @@ class _OrderPageState extends State<OrderPage> {
                                     shippingCost: order['shippingCost'] ?? 10000,
                                     orderNumber: orderNumber,
                                     currentStatus: status,
+                                    onUpdateStatus: (newStatus) async {
+                                      await _updateOrderStatus(orderId, newStatus);
+                                    },
                                   ),
                                 ),
                               );

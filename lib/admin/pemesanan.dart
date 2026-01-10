@@ -5,6 +5,7 @@ class PemesananPage extends StatefulWidget {
   final int shippingCost;
   final String orderNumber;
   final int currentStatus;
+  final Future<void> Function(int newStatus)? onUpdateStatus;
 
   const PemesananPage({
     super.key,
@@ -12,6 +13,7 @@ class PemesananPage extends StatefulWidget {
     required this.shippingCost,
     required this.orderNumber,
     required this.currentStatus,
+    this.onUpdateStatus,
   });
 
   @override
@@ -57,21 +59,27 @@ class _PemesananPageState extends State<PemesananPage> {
 
 
   // Update Status - bisa update ke step manapun
-  void _updateStatus(int targetIndex) {
-    setState(() {
-      currentStatusIndex = targetIndex; // Update status lokal
-    });
+  Future<void> _updateStatus(int targetIndex) async {
+  if (widget.onUpdateStatus == null) return;
 
-    // Note: In a real app, this would update the status in a backend/database
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Status berhasil diperbarui menjadi: ${statusData[targetIndex]['title']}'),
-        duration: const Duration(seconds: 1),
-        backgroundColor: Colors.green,
+  await widget.onUpdateStatus!(targetIndex);
+
+  if (!mounted) return;
+
+  setState(() {
+    currentStatusIndex = targetIndex;
+  });
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        'Status berhasil diperbarui menjadi ${statusData[targetIndex]['title']}',
       ),
-    );
-    // Dalam implementasi nyata, status akan disimpan ke backend/database
-  }
+      duration: const Duration(seconds: 1),
+      backgroundColor: Colors.green,
+    ),
+  );
+}
 
   // Tahapan Proses
   Widget _buildProcessStepWithButton(Map<String, dynamic> data, int index) {
