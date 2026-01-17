@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'beranda.dart';
 import 'admin/order_page.dart' as admin_order;
 import 'register.dart';
@@ -18,6 +19,7 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
+  bool _isLoading = false;
 
   Color _getColorFromHex(String hexColor) {
     hexColor = hexColor.toUpperCase().replaceAll('#', '');
@@ -27,92 +29,99 @@ class _LoginPageState extends State<LoginPage> {
     return Color(int.parse(hexColor, radix: 16));
   }
 
- Future<void> _validateLogin() async {
-  String email = emailController.text.trim();
-  String password = passwordController.text.trim();
+  Future<void> _validateLogin() async {
+    String email = emailController.text.trim();
+    String password = passwordController.text.trim();
 
-  if (email.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Tolong lengkapi semua kolom")),
-    );
-    return;
-  }
-
-  if (!email.endsWith('@gmail.com')) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Gunakan email yang valid!")),
-    );
-    return;
-  }
-
-  try {
-    final authService = AuthService();
-
-    // LOGIN AUTH
-    await authService.signIn(
-      email: email,
-      password: password,
-    );
-
-    if (!mounted) return;
-
-    // CEK ROLE DARI DATABASE
-    final bool isAdmin = await authService.isAdmin();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isAdmin
-              ? "Login berhasil sebagai Admin!"
-              : "Login berhasil!",
-        ),
-        backgroundColor: Colors.green,
-        duration: const Duration(milliseconds: 800),
-      ),
-    );
-
-    // ROUTING (TIDAK DIUBAH)
-    if (isAdmin) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const admin_order.OrderPage(),
-        ),
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Tolong lengkapi semua kolom")),
       );
-    } else {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const BerandaPage(),
-        ),
-      );
-    }
-  } on AuthException catch (e) {
-    if (!mounted) return;
-
-    String errorMessage = "Login gagal!";
-    if (e.message.contains('Invalid login credentials')) {
-      errorMessage = "Email atau password salah!";
-    } else if (e.message.contains('Email not confirmed')) {
-      errorMessage = "Email belum dikonfirmasi!";
+      return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(errorMessage)),
-    );
-  } catch (e) {
-    if (!mounted) return;
+    if (!email.endsWith('@gmail.com')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Gunakan email yang valid!")),
+      );
+      return;
+    }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("Terjadi kesalahan: $e")),
-    );
+    setState(() => _isLoading = true);
+
+    try {
+      final authService = AuthService();
+
+      await authService.signIn(email: email, password: password);
+
+      if (!mounted) return;
+
+      final bool isAdmin = await authService.isAdmin();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+      await prefs.setBool('isAdmin', isAdmin);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isAdmin ? "Login berhasil sebagai Admin!" : "Login berhasil!",
+          ),
+          backgroundColor: Colors.green,
+          duration: const Duration(milliseconds: 800),
+        ),
+      );
+
+      if (isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const admin_order.OrderPage(),
+          ),
+        );
+      } else {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const BerandaPage()),
+        );
+      }
+    } on AuthException catch (e) {
+      if (!mounted) return;
+
+      String errorMessage = "Login gagal!";
+      if (e.message.contains('Invalid login credentials')) {
+        errorMessage = "Email atau password salah!";
+      } else if (e.message.contains('Email not confirmed')) {
+        errorMessage = "Email belum dikonfirmasi!";
+      }
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(errorMessage)));
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Terjadi kesalahan: $e")));
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
   }
-}
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final Color primaryColor = _getColorFromHex('DD0303');
-    final Color secondaryColor = _getColorFromHex('B00020'); 
+    final Color secondaryColor = _getColorFromHex('B00020');
     const Color onPrimaryColor = Colors.white;
 
     final Color highContrastButtonColor = Colors.amber.shade700;
@@ -124,10 +133,7 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              primaryColor,
-              secondaryColor,
-            ],
+            colors: [primaryColor, secondaryColor],
           ),
         ),
         child: Padding(
@@ -145,10 +151,7 @@ class _LoginPageState extends State<LoginPage> {
                   const SizedBox(height: 10),
                   const Text(
                     "SELAMAT DATANG",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: onPrimaryColor,
-                    ),
+                    style: TextStyle(fontSize: 14, color: onPrimaryColor),
                   ),
                   const Text(
                     "Silahkan Login",
@@ -217,7 +220,7 @@ class _LoginPageState extends State<LoginPage> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: _validateLogin,
+                      onPressed: _isLoading ? null : _validateLogin,
                       style: ElevatedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -225,14 +228,19 @@ class _LoginPageState extends State<LoginPage> {
                         backgroundColor: highContrastButtonColor,
                         elevation: 15,
                       ),
-                      child: const Text(
-                        "Masuk",
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: onButtonColor,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      child:
+                          _isLoading
+                              ? const CircularProgressIndicator(
+                                color: Colors.black,
+                              )
+                              : const Text(
+                                "Masuk",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: onButtonColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                     ),
                   ),
                   const SizedBox(height: 30),
@@ -248,7 +256,9 @@ class _LoginPageState extends State<LoginPage> {
                         onTap: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => const RegisterPage()),
+                            MaterialPageRoute(
+                              builder: (context) => const RegisterPage(),
+                            ),
                           );
                         },
                         child: const Text(
