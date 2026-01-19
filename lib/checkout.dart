@@ -14,12 +14,68 @@ class CheckoutPage extends StatefulWidget {
 }
 
 class _CheckoutPageState extends State<CheckoutPage> {
+  // State untuk menyimpan item yang dikelompokkan dan jumlahnya
+  List<Map<String, dynamic>> _groupedItems = [];
+
   // Controller untuk mengambil teks dari input field (opsional untuk saat ini)
   final TextEditingController _outletController =
       TextEditingController(text: 'Jl. Bhayangkara No.55, Tipes');
   final TextEditingController _deliveryController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _groupCartItems();
+  }
+
+  void _groupCartItems() {
+    final Map<String, Map<String, dynamic>> tempGrouped = {};
+    for (final product in widget.cart) {
+      final String name = (product['name'] ?? 'Menu').toString();
+      if (!tempGrouped.containsKey(name)) {
+        tempGrouped[name] = {
+          'product': product,
+          'qty': 1,
+        };
+      } else {
+        tempGrouped[name]!['qty'] = (tempGrouped[name]!['qty'] as int) + 1;
+      }
+    }
+    _groupedItems = tempGrouped.values.toList();
+  }
+
+  void _incrementQty(int index) {
+    setState(() {
+      _groupedItems[index]['qty'] = (_groupedItems[index]['qty'] as int) + 1;
+    });
+  }
+
+  void _decrementQty(int index) {
+    setState(() {
+      int currentQty = _groupedItems[index]['qty'] as int;
+      if (currentQty > 0) {
+        if (currentQty == 1) {
+          _groupedItems.removeAt(index);
+        } else {
+          _groupedItems[index]['qty'] = currentQty - 1;
+        }
+      }
+    });
+  }
+
+  List<Map<String, dynamic>> _getFlatCart() {
+    List<Map<String, dynamic>> flat = [];
+    for (var item in _groupedItems) {
+      int qty = item['qty'] as int;
+      var product = item['product'];
+      for (int i = 0; i < qty; i++) {
+        flat.add(product);
+      }
+    }
+    return flat;
+  }
 
   Future<void> _fillCurrentLocation() async {
     try {
@@ -129,30 +185,19 @@ class _CheckoutPageState extends State<CheckoutPage> {
 
   int _calculateSubtotal() {
     int total = 0;
-    for (final product in widget.cart) {
+    for (final item in _groupedItems) {
+      final product = item['product'];
+      final int qty = item['qty'] as int;
       final int harga = (product['harga'] ?? 0) as int;
-      total += harga;
+      total += harga * qty;
     }
     return total;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Kelompokkan item berdasarkan nama untuk menampilkan qty (sama seperti di beranda.dart)
-    final Map<String, Map<String, dynamic>> grouped = {};
-    for (final product in widget.cart) {
-      final String name = (product['name'] ?? 'Menu').toString();
-      if (!grouped.containsKey(name)) {
-        grouped[name] = {
-          'product': product,
-          'qty': 1,
-        };
-      } else {
-        grouped[name]!['qty'] = (grouped[name]!['qty'] as int) + 1;
-      }
-    }
-    final entries = grouped.entries.toList();
-    
+    // Item sudah dikelompokkan di _groupedItems pada initState
+
     // Hitung total
     final int subtotal = _calculateSubtotal();
     const int deliveryFee = 10000;
@@ -265,7 +310,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 borderRadius: BorderRadius.circular(12),
                 color: Colors.white,
               ),
-              child: entries.isEmpty
+              child: _groupedItems.isEmpty
                   ? const Center(
                       child: Text(
                         'Belum ada pesanan',
@@ -274,27 +319,30 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     )
                   : Column(
                       children: [
-                        for (int i = 0; i < entries.length; i++) ...[
+                        for (int i = 0; i < _groupedItems.length; i++) ...[
                           Builder(
                             builder: (context) {
-                              final entry = entries[i];
-                              final product = entry.value['product']
+                              final item = _groupedItems[i];
+                              final product = item['product']
                                   as Map<String, dynamic>;
-                              final int qty = entry.value['qty'] as int;
+                              final int qty = item['qty'] as int;
+                              final String name = (product['name'] ?? 'Menu').toString();
                               final String price =
                                   (product['price'] ?? '-').toString();
 
                               final String? image = product['image'];
 
                               return _buildOrderItem(
-                                itemName: entry.key,
+                                itemName: name,
                                 price: price,
                                 quantity: qty,
                                 imageUrl: image,
+                                onIncrement: () => _incrementQty(i),
+                                onDecrement: () => _decrementQty(i),
                               );
                             },
                           ),
-                          if (i != entries.length - 1)
+                          if (i != _groupedItems.length - 1)
                             const Divider(height: 30), // Garis pemisah antar item
                         ],
                       ],
@@ -415,7 +463,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     context,
                     MaterialPageRoute(
                       builder: (context) => PaymentPage(
-                        cart: widget.cart,
+                        cart: _getFlatCart(),
                         shippingCost: deliveryFee,
                         deliveryAddress: _deliveryController.text.trim(),
                         phone: _phoneController.text.trim(),
@@ -491,6 +539,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required String price,
     required int quantity,
     String? imageUrl,
+    required VoidCallback onIncrement,
+    required VoidCallback onDecrement,
   }) {
     return Row(
       children: [
@@ -536,14 +586,41 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
         ),
 
-        // Tampilan Kuantitas Statis (x 2)
-        Text(
-          'x $quantity',
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFFDD0303),
-          ),
+        // Tampilan Kuantitas dengan Tombol + dan -
+        Row(
+          children: [
+            InkWell(
+              onTap: onDecrement,
+              child: const Padding(
+                padding: EdgeInsets.all(4.0),
+                child: Icon(
+                  Icons.remove_circle_outline,
+                  color: Color(0xFFDD0303),
+                  size: 24,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              '$quantity',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(width: 8),
+            InkWell(
+              onTap: onIncrement,
+              child: const Padding(
+                padding: EdgeInsets.all(4.0),
+                child: Icon(
+                  Icons.add_circle_outline,
+                  color: Color(0xFFDD0303),
+                  size: 24,
+                ),
+              ),
+            ),
+          ],
         ),
       ],
     );

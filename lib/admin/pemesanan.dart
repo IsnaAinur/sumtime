@@ -8,6 +8,7 @@ class PemesananPage extends StatefulWidget {
   final String? deliveryAddress;
   final String? phone;
   final String? notes;
+  final String? paymentProofUrl;
   final Future<void> Function(int newStatus)? onUpdateStatus;
 
   const PemesananPage({
@@ -19,6 +20,7 @@ class PemesananPage extends StatefulWidget {
     this.deliveryAddress,
     this.phone,
     this.notes,
+    this.paymentProofUrl,
     this.onUpdateStatus,
   });
 
@@ -339,6 +341,59 @@ class _PemesananPageState extends State<PemesananPage> {
                       ),
                     ),
                     const SizedBox(height: 20),
+                    // Bukti Pembayaran
+                    if (widget.paymentProofUrl != null) ...[
+                      Card(
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(15.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Bukti Pembayaran', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: primaryColor)),
+                              const Divider(height: 20, thickness: 1.5, color: Color(0xFFEEEEEE)),
+                              const SizedBox(height: 10),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  widget.paymentProofUrl!,
+                                  width: double.infinity,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, loadingProgress) {
+                                    if (loadingProgress == null) return child;
+                                    return Center(
+                                      child: CircularProgressIndicator(
+                                        value: loadingProgress.expectedTotalBytes != null
+                                            ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
+                                            : null,
+                                      ),
+                                    );
+                                  },
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      height: 100,
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: Column(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            Icon(Icons.broken_image, color: Colors.grey, size: 40),
+                                            SizedBox(height: 8),
+                                            Text('Gagal memuat gambar', style: TextStyle(color: Colors.grey)),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
 
                     // Detail Pesanan
                     Card(

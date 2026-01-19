@@ -484,6 +484,7 @@ class OrderService {
           'notes': order['notes'],
           'customerName': order['users']?['username'],
           'customerEmail': order['users']?['email'],
+          'paymentProofUrl': order['payment_proof_url'],
         };
       }).toList();
     } catch (e) {
@@ -575,6 +576,7 @@ class OrderService {
           'notes': order['notes'],
           'customerName': order['users']?['username'],
           'customerEmail': order['users']?['email'],
+          'paymentProofUrl': order['payment_proof_url'],
         };
       }).toList();
     } catch (e) {

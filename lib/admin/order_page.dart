@@ -304,6 +304,7 @@ class _OrderPageState extends State<OrderPage> {
                                     deliveryAddress: order['deliveryAddress'],
                                     phone: order['phone'],
                                     notes: order['notes'],
+                                    paymentProofUrl: order['paymentProofUrl'],
                                     onUpdateStatus: (newStatus) async {
                                       await _updateOrderStatus(orderId, newStatus);
                                     },

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
-import 'nav._bottom.dart';
+import '../../services/order_service.dart';
 
 class DetailLaporanPage extends StatefulWidget {
-  const DetailLaporanPage({super.key});
+  final String orderUuid;
+
+  const DetailLaporanPage({super.key, required this.orderUuid});
 
   @override
   State<DetailLaporanPage> createState() => _DetailLaporanPageState();
@@ -10,23 +12,82 @@ class DetailLaporanPage extends StatefulWidget {
 
 class _DetailLaporanPageState extends State<DetailLaporanPage> {
   static const Color primaryColor = Color(0xFFDD0303);
+  final OrderService _orderService = OrderService();
 
-  // Data dummy untuk detail laporan
-  final String orderId = 'ORD-001';
-  final String customerName = 'Ahmad Surya';
-  final String deliveryLocation = 'Jl. Sudirman No. 123, Jakarta Pusat';
-  final String phoneNumber = '+62 812-3456-7890';
-  final String notes = 'Tolong packing rapi ya, terima kasih';
-  final String deliveryFee = 'Rp 6.000';
-  final String totalAmount = 'Rp 40.000';
+  bool _isLoading = true;
+  Map<String, dynamic>? _orderData;
+  String _errorMessage = '';
 
-  final List<Map<String, dynamic>> orderItems = [
-    {'name': 'Dimsum Ayam', 'quantity': 2, 'price': 'Rp 15.000', 'subtotal': 'Rp 30.000'},
-    {'name': 'Es Teh', 'quantity': 1, 'price': 'Rp 4.000', 'subtotal': 'Rp 4.000'},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _fetchOrderDetail();
+  }
+
+  Future<void> _fetchOrderDetail() async {
+    try {
+      final data = await _orderService.getOrderDetails(widget.orderUuid);
+      if (mounted) {
+        setState(() {
+          _orderData = data;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString();
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  String _formatCurrency(int amount) {
+    return 'Rp ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(color: primaryColor),
+        ),
+      );
+    }
+
+    if (_errorMessage.isNotEmpty || _orderData == null) {
+      return Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: primaryColor),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ),
+        body: Center(
+          child: Text('Gagal memuat detail laporan: $_errorMessage'),
+        ),
+      );
+    }
+
+    final order = _orderData!;
+    final orderId = order['order_id'] ?? '-';
+    final customerName = order['users']?['username'] ?? 'Tamu';
+    final customerEmail = order['users']?['email'] ?? '-';
+    final deliveryLocation = order['delivery_address'] ?? '-';
+    final phoneNumber = order['phone'] ?? '-';
+    final notes = order['notes'] ?? '-';
+    final deliveryFee = order['shipping_cost'] as int? ?? 0;
+    final totalAmount = order['total_amount'] as int? ?? 0;
+    final orderItems = List<Map<String, dynamic>>.from(order['order_items'] ?? []);
+
+    // Calculate subtotal from items
+    int subtotal = 0;
+    for (var item in orderItems) {
+      subtotal += (item['item_price'] as int) * (item['quantity'] as int);
+    }
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -88,6 +149,7 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
                 title: 'Informasi Pelanggan',
                 children: [
                   _buildInfoRow('Nama', customerName),
+                  _buildInfoRow('Email', customerEmail),
                   _buildInfoRow('Lokasi Pengiriman', deliveryLocation),
                   _buildInfoRow('No. HP', phoneNumber),
                 ],
@@ -96,11 +158,12 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
               const SizedBox(height: 16),
 
               // Daftar Pesanan
-              _buildOrderItemsSection(),
+              _buildOrderItemsSection(orderItems),
 
               const SizedBox(height: 16),
 
               // Catatan
+              if (notes != null && notes.toString().isNotEmpty) 
               _buildInfoSection(
                 title: 'Catatan',
                 children: [
@@ -123,14 +186,16 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
                 ],
               ),
 
+              if (notes != null && notes.toString().isNotEmpty)
               const SizedBox(height: 16),
 
               // Ringkasan Pembayaran
-              _buildPaymentSummary(),
+              _buildPaymentSummary(subtotal, deliveryFee, totalAmount),
 
               const SizedBox(height: 24),
 
-              // Status LUNAS
+              // Status LUNAS (Hanya jika status == 3 / Selesai, atau sesuaikan)
+              if (order['status'] == 3)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
@@ -157,7 +222,6 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
           ),
         ),
       ),
-      bottomNavigationBar: const AdminBottomNav(currentIndex: 2),
     );
   }
 
@@ -229,7 +293,7 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
     );
   }
 
-  Widget _buildOrderItemsSection() {
+  Widget _buildOrderItemsSection(List<Map<String, dynamic>> items) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -258,54 +322,57 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
             ),
           ),
           const SizedBox(height: 12),
-          ...orderItems.map((item) => Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.only(bottom: 8),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['name'],
-                        style: const TextStyle(
-                          color: Colors.black,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+          ...items.map((item) {
+             final itemTotal = (item['item_price'] ?? 0) * (item['quantity'] ?? 0);
+             return Container(
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item['item_name'] ?? 'Item',
+                          style: const TextStyle(
+                            color: Colors.black,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      Text(
-                        '${item['quantity']}x @ ${item['price']}',
-                        style: TextStyle(
-                          color: Colors.black54,
-                          fontSize: 12,
+                        Text(
+                          '${item['quantity']}x @ ${_formatCurrency(item['item_price'] ?? 0)}',
+                          style: const TextStyle(
+                            color: Colors.black54,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                Text(
-                  item['subtotal'],
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
+                  Text(
+                    _formatCurrency(itemTotal),
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
-            ),
-          )),
+                ],
+              ),
+            );
+          }),
         ],
       ),
     );
   }
 
-  Widget _buildPaymentSummary() {
+  Widget _buildPaymentSummary(int subtotal, int deliveryFee, int total) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -325,10 +392,10 @@ class _DetailLaporanPageState extends State<DetailLaporanPage> {
             ),
           ),
           const SizedBox(height: 12),
-          _buildPaymentRow('Subtotal Pesanan', 'Rp 34.000'),
-          _buildPaymentRow('Biaya Pengiriman', deliveryFee),
+          _buildPaymentRow('Subtotal Pesanan', _formatCurrency(subtotal)),
+          _buildPaymentRow('Biaya Pengiriman', _formatCurrency(deliveryFee)),
           const Divider(height: 16, color: Colors.black26),
-          _buildPaymentRow('Total', totalAmount, isTotal: true),
+          _buildPaymentRow('Total', _formatCurrency(total), isTotal: true),
         ],
       ),
     );

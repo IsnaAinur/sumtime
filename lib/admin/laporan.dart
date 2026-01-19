@@ -372,7 +372,7 @@ class _LaporanPageState extends State<LaporanPage> {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => const DetailLaporanPage()),
+                                MaterialPageRoute(builder: (context) => DetailLaporanPage(orderUuid: item.uuid)),
                               );
                             },
                             child: const Text('Detail'),

@@ -12,7 +12,6 @@ import 'history_pemesanan.dart';
 import 'rincianpesanan.dart';
 import 'admin/order_page.dart' as admin_order;
 import 'admin/laporan.dart' as admin_laporan;
-import 'admin/detail_laporan.dart' as admin_detail_laporan;
 import 'admin/pemesanan.dart' as admin_pemesanan;
 import 'admin/add_item_main.dart' as admin_add_item;
 import 'admin/add_item_poster.dart' as admin_add_poster;
@@ -57,7 +56,6 @@ class SumTimeApp extends StatelessWidget {
         // Admin routes
         '/admin/order': (context) => const admin_order.OrderPage(),
         '/admin/laporan': (context) => const admin_laporan.LaporanPage(),
-        '/admin/detail-laporan': (context) => const admin_detail_laporan.DetailLaporanPage(),
         '/admin/pemesanan': (context) => admin_pemesanan.PemesananPage(orderItems: const [], shippingCost: 0, orderNumber: '', currentStatus: 0), // Placeholder parameters
         '/admin/add-item': (context) => const admin_add_item.AddItemMainPage(),
         '/admin/add-poster': (context) => const admin_add_poster.AddItemPosterPage(),
