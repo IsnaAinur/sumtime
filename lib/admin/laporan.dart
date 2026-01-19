@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'nav._bottom.dart';
 import 'detail_laporan.dart';
+
 
 class ReportItem {
   final int no;
   final DateTime date;
-  final String orderId;
+  final String orderId; // Display ID (ORD-XXX)
+  final String uuid;    // Database UUID
   final String totalHarga;
 
-  ReportItem(this.no, this.date, this.orderId, this.totalHarga);
+  ReportItem(this.no, this.date, this.orderId, this.uuid, this.totalHarga);
 
   String get formattedDate => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
 }
@@ -23,20 +26,10 @@ class LaporanPage extends StatefulWidget {
 class _LaporanPageState extends State<LaporanPage> {
   String? _selectedBulan = 'Bulan';
   String? _selectedTahun = 'Tahun';
+  bool _isLoading = true;
 
-  // All report data
-  final List<ReportItem> _allReportData = [
-    ReportItem(1, DateTime(2024, 11, 22), 'ORD-001', 'Rp 50.000'),
-    ReportItem(2, DateTime(2024, 11, 22), 'ORD-002', 'Rp 25.000'),
-    ReportItem(3, DateTime(2024, 10, 15), 'ORD-003', 'Rp 60.000'),
-    ReportItem(4, DateTime(2024, 10, 10), 'ORD-004', 'Rp 30.000'),
-    ReportItem(5, DateTime(2024, 9, 5), 'ORD-005', 'Rp 45.000'),
-    ReportItem(6, DateTime(2024, 9, 12), 'ORD-006', 'Rp 35.000'),
-    ReportItem(7, DateTime(2025, 1, 8), 'ORD-007', 'Rp 75.000'),
-    ReportItem(8, DateTime(2025, 1, 15), 'ORD-008', 'Rp 40.000'),
-    ReportItem(9, DateTime(2025, 2, 20), 'ORD-009', 'Rp 55.000'),
-    ReportItem(10, DateTime(2025, 2, 25), 'ORD-010', 'Rp 65.000'),
-  ];
+  // All report data fetched from database
+  List<ReportItem> _allReportData = [];
 
   // Filtered data (will be updated based on selected filters)
   List<ReportItem> _filteredReportData = [];
@@ -48,7 +41,57 @@ class _LaporanPageState extends State<LaporanPage> {
   @override
   void initState() {
     super.initState();
-    _filteredReportData = List.from(_allReportData); // Initially show all data
+    _fetchReportData();
+  }
+
+  Future<void> _fetchReportData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final response = await Supabase.instance.client
+          .from('orders')
+          .select()
+          .order('order_date', ascending: false);
+
+      final List<dynamic> data = response as List<dynamic>;
+      
+      List<ReportItem> items = [];
+      for (int i = 0; i < data.length; i++) {
+        final order = data[i];
+        final orderDate = DateTime.parse(order['order_date']);
+        final totalAmount = order['total_amount'] as int;
+        
+        items.add(ReportItem(
+          i + 1,
+          orderDate,
+          order['order_id'] ?? 'UNKNOWN',
+          order['id'], // UUID
+          'Rp ${totalAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+        ));
+      }
+
+      setState(() {
+        _allReportData = items;
+        _filteredReportData = List.from(_allReportData);
+        _isLoading = false;
+      });
+      
+      // Apply existing filters if any
+      _applyFilters();
+      
+    } catch (e) {
+      debugPrint('Error fetching report data: $e');
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat data laporan: $e')),
+        );
+      }
+    }
   }
 
   void _applyFilters() {
@@ -75,15 +118,19 @@ class _LaporanPageState extends State<LaporanPage> {
 
       // Update item numbers after filtering
       for (int i = 0; i < _filteredReportData.length; i++) {
+        // We re-create items to update the 'No.' field dynamically based on filtered view
         _filteredReportData[i] = ReportItem(
           i + 1,
           _filteredReportData[i].date,
           _filteredReportData[i].orderId,
+          _filteredReportData[i].uuid,
           _filteredReportData[i].totalHarga,
         );
       }
     });
   }
+
+
 
   String _calculateTotalPendapatan() {
     int total = 0;
@@ -215,6 +262,31 @@ class _LaporanPageState extends State<LaporanPage> {
 
   // Modern Report Table
   Widget _buildModernReportTable(List<ReportItem> data) {
+    if (_isLoading) {
+      return const Center(child: Padding(
+        padding: EdgeInsets.all(32.0),
+        child: CircularProgressIndicator(color: Color(0xFFDD0303)),
+      ));
+    }
+    
+    if (data.isEmpty) {
+       return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            children: [
+              Icon(Icons.assignment_outlined, size: 48, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                'Belum ada data laporan',
+                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Card(
       elevation: 4,
       shadowColor: Colors.grey.withOpacity(0.3),
@@ -239,12 +311,12 @@ class _LaporanPageState extends State<LaporanPage> {
                   topRight: Radius.circular(16),
                 ),
               ),
-              child: Text(
+              child: const Text(
                 'Detail Laporan',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: const Color(0xFFDD0303),
+                  color: Color(0xFFDD0303),
                 ),
               ),
             ),
@@ -369,120 +441,124 @@ class _LaporanPageState extends State<LaporanPage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            // Modern App Bar
-            SliverAppBar(
-              backgroundColor: Colors.white,
-              elevation: 0,
-              pinned: true,
-              automaticallyImplyLeading: false,
-              title: const Text(
-                'Dashboard',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+        child: RefreshIndicator(
+          onRefresh: _fetchReportData,
+          color: const Color(0xFFDD0303),
+          child: CustomScrollView(
+            slivers: [
+              // Modern App Bar
+              SliverAppBar(
+                backgroundColor: Colors.white,
+                elevation: 0,
+                pinned: true,
+                automaticallyImplyLeading: false,
+                title: const Text(
+                  'Dashboard',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
                 ),
-              ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(80),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  child: Row(
-                    children: [
-                      _buildModernDropdown(
-                        'Bulan',
-                        _selectedBulan,
-                        const ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
-                        (String? newValue) {
-                          setState(() {
-                            _selectedBulan = newValue;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                      _buildModernDropdown(
-                        'Tahun',
-                        _selectedTahun,
-                        const ['2024', '2025', '2026'],
-                        (String? newValue) {
-                          setState(() {
-                            _selectedTahun = newValue;
-                          });
-                          _applyFilters();
-                        },
-                      ),
-                      // Reset Filter Button
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          setState(() {
-                            _selectedBulan = 'Bulan';
-                            _selectedTahun = 'Tahun';
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(80),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
+                      children: [
+                        _buildModernDropdown(
+                          'Bulan',
+                          _selectedBulan,
+                          const ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'],
+                          (String? newValue) {
+                            setState(() {
+                              _selectedBulan = newValue;
+                            });
                             _applyFilters();
-                          });
-                        },
-                        icon: const Icon(Icons.refresh, size: 18),
-                        label: const Text('Reset'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          elevation: 2,
+                          },
                         ),
-                      ),
-                    ],
+                        _buildModernDropdown(
+                          'Tahun',
+                          _selectedTahun,
+                          const ['2024', '2025', '2026'],
+                          (String? newValue) {
+                            setState(() {
+                              _selectedTahun = newValue;
+                            });
+                            _applyFilters();
+                          },
+                        ),
+                        // Reset Filter Button
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _selectedBulan = 'Bulan';
+                              _selectedTahun = 'Tahun';
+                              _fetchReportData(); // Re-fetch to normalize
+                            });
+                          },
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: const Text('Reset'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[600],
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 2,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Content
-            SliverPadding(
-              padding: const EdgeInsets.all(20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Summary Cards Grid
-                  GridView.count(
-                    crossAxisCount: 1,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    childAspectRatio: 3.5,
-                    mainAxisSpacing: 16,
-                    children: [
-                      _buildSummaryCard(
-                        'Total Penjualan',
-                        '$_totalPenjualan',
-                        Icons.shopping_cart,
-                        const Color(0xFFDD0303),
-                      ),
-                      _buildSummaryCard(
-                        'Total Pendapatan',
-                        _totalPendapatan,
-                        Icons.attach_money,
-                        const Color(0xFF10B981),
-                      ),
-                      _buildSummaryCard(
-                        'Rata-rata Pendapatan',
-                        _rataRataPendapatan,
-                        Icons.trending_up,
-                        const Color(0xFFF59E0B),
-                      ),
-                    ],
-                  ),
+              // Content
+              SliverPadding(
+                padding: const EdgeInsets.all(20),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Summary Cards Grid
+                    GridView.count(
+                      crossAxisCount: 1,
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      childAspectRatio: 3.5,
+                      mainAxisSpacing: 16,
+                      children: [
+                        _buildSummaryCard(
+                          'Total Penjualan',
+                          '$_totalPenjualan',
+                          Icons.shopping_cart,
+                          const Color(0xFFDD0303),
+                        ),
+                        _buildSummaryCard(
+                          'Total Pendapatan',
+                          _totalPendapatan,
+                          Icons.attach_money,
+                          const Color(0xFF10B981),
+                        ),
+                        _buildSummaryCard(
+                          'Rata-rata Pendapatan',
+                          _rataRataPendapatan,
+                          Icons.trending_up,
+                          const Color(0xFFF59E0B),
+                        ),
+                      ],
+                    ),
 
-                  const SizedBox(height: 32),
+                    const SizedBox(height: 32),
 
-                  // Report Table
-                  _buildModernReportTable(_filteredReportData),
-                ]),
+                    // Report Table
+                    _buildModernReportTable(_filteredReportData),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: const AdminBottomNav(currentIndex: 2),

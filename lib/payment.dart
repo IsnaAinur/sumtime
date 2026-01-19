@@ -182,6 +182,9 @@ class _PaymentPageState extends State<PaymentPage> {
             orderNumber: orderNumber,
             orderDate: DateTime.now(),
             currentStatus: 0,
+            deliveryAddress: widget.deliveryAddress,
+            phone: widget.phone,
+            notes: widget.notes.isNotEmpty ? widget.notes : null,
           ),
         ),
       );

@@ -31,6 +31,50 @@ class OrderService {
            DateTime.now().difference(cacheTime) < _cacheDuration;
   }
 
+  Future<String> _generateSequentialOrderId({int extraIncrement = 0}) async {
+    try {
+      // Fetch larger batch of potential latest IDs to ensure we find the true max
+      // Filter for IDs starting with 'ORD-' to ignore old formats like '005'
+      final response = await _client
+          .from('orders')
+          .select('order_id')
+          .like('order_id', 'ORD-%')
+          .order('order_id', ascending: false)
+          .limit(100);
+
+      final List<dynamic> data = response as List<dynamic>;
+      
+      int currentMax = 0;
+      
+      // Flexible regex to match ORD- followed by any digits
+      final numberPattern = RegExp(r'^ORD-(\d+)$');
+      
+      for (final item in data) {
+        final id = item['order_id'] as String;
+        final match = numberPattern.firstMatch(id);
+        
+        if (match != null) {
+           // Parse the number part
+           final numberPart = match.group(1);
+           if (numberPart != null) {
+             final number = int.tryParse(numberPart);
+             if (number != null && number > currentMax) {
+               currentMax = number;
+             }
+           }
+        }
+      }
+
+      // Next number is max found + 1 + extra for retries
+      final nextNumber = currentMax + 1 + extraIncrement;
+      
+      return 'ORD-${nextNumber.toString().padLeft(5, '0')}';
+    } catch (e) {
+      // Fallback: If query fails, default to 1 + extra
+      return 'ORD-${(1 + extraIncrement).toString().padLeft(5, '0')}';
+    }
+  }
+
   // Create new order
   Future<Map<String, dynamic>> createOrder({
     required List<Map<String, dynamic>> cartItems,
@@ -68,16 +112,36 @@ class OrderService {
       });
       totalAmount += shippingCost;
 
-      // Create order
-      final orderResponse = await _client.from('orders').insert({
-        'user_id': user.id,
-        'total_amount': totalAmount,
-        'shipping_cost': shippingCost,
-        'delivery_address': deliveryAddress,
-        'phone': phone,
-        'notes': notes,
-        'status': 0, // Diterima
-      }).select().single();
+      // Generate unique sequential order ID with retry logic
+      Map<String, dynamic>? orderResponse;
+      int attempts = 0;
+      
+      while (attempts < 3) {
+        try {
+          final uniqueId = await _generateSequentialOrderId(extraIncrement: attempts);
+          
+          orderResponse = await _client.from('orders').insert({
+            'order_id': uniqueId,
+            'user_id': user.id,
+            'total_amount': totalAmount,
+            'shipping_cost': shippingCost,
+            'delivery_address': deliveryAddress,
+            'phone': phone,
+            'notes': notes,
+            'status': 0, // Diterima
+          }).select().single();
+          
+          break; // Success
+        } catch (e) {
+          attempts++;
+          if (attempts >= 3) {
+            throw Exception('Gagal membuat pesanan setelah 3 percobaan. Error: $e');
+          }
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+      
+      if (orderResponse == null) throw Exception('Gagal membuat pesanan.');
 
       final orderId = orderResponse['id'];
 
@@ -102,9 +166,9 @@ class OrderService {
   }
 
   // Get user orders
-  Future<List<Map<String, dynamic>>> getUserOrders({int? limit, int? offset}) async {
-    // Return cached data if valid
-    if (_cachedUserOrders != null && _isCacheValid(_userOrdersCacheTime)) {
+  Future<List<Map<String, dynamic>>> getUserOrders({int? limit, int? offset, bool forceRefresh = false}) async {
+    // Return cached data if valid and not forced
+    if (!forceRefresh && _cachedUserOrders != null && _isCacheValid(_userOrdersCacheTime)) {
       return _cachedUserOrders!;
     }
 
@@ -177,9 +241,9 @@ class OrderService {
   }
 
   // Get all orders (admin only)
-  Future<List<Map<String, dynamic>>> getAllOrders({int? limit, int? offset}) async {
-    // Return cached data if valid
-    if (_cachedAllOrders != null && _isCacheValid(_ordersCacheTime)) {
+  Future<List<Map<String, dynamic>>> getAllOrders({int? limit, int? offset, bool forceRefresh = false}) async {
+    // Return cached data if valid and not forced
+    if (!forceRefresh && _cachedAllOrders != null && _isCacheValid(_ordersCacheTime)) {
       return _cachedAllOrders!;
     }
 
@@ -187,7 +251,7 @@ class OrderService {
       // Get all orders with user info in one query
       var query = _client
           .from('orders')
-          .select('*, users(username, email)')
+          .select('*, users!left(username, email)')
           .order('order_date', ascending: false);
 
       // Apply pagination if provided
@@ -253,7 +317,7 @@ class OrderService {
       // Get order with user info
       final orderResponse = await _client
           .from('orders')
-          .select('*, users(username, email)')
+          .select('*, users!left(username, email)')
           .eq('id', orderId)
           .single();
 
@@ -293,7 +357,7 @@ class OrderService {
       // Get orders with user info in one query
       final ordersResponse = await _client
           .from('orders')
-          .select('*, users(username, email)')
+          .select('*, users!left(username, email)')
           .eq('status', status)
           .order('order_date', ascending: false);
 
@@ -382,11 +446,11 @@ class OrderService {
       throw Exception('Failed to get order statistics: $e');
     }
   }
-
-  // Helper method to convert database order to OrderItem format
-  Future<List<Map<String, dynamic>>> getOrdersFormatted({bool isAdmin = false, int? limit, int? offset}) async {
+  Future<List<Map<String, dynamic>>> getOrdersFormatted({bool isAdmin = false, int? limit, int? offset, bool forceRefresh = false}) async {
     try {
-      final orders = isAdmin ? await getAllOrders(limit: limit, offset: offset) : await getUserOrders(limit: limit, offset: offset);
+      final orders = isAdmin 
+          ? await getAllOrders(limit: limit, offset: offset, forceRefresh: forceRefresh) 
+          : await getUserOrders(limit: limit, offset: offset, forceRefresh: forceRefresh);
 
       return orders.map((order) {
         final orderItems = (order['order_items'] as List<dynamic>? ?? [])
@@ -443,7 +507,7 @@ class OrderService {
       // Get orders with user info in one query
       final ordersResponse = await _client
           .from('orders')
-          .select('*, users(username, email)')
+          .select('*, users!left(username, email)')
           .inFilter('status', isCompleted ? [3] : [0, 1, 2])
           .order('order_date', ascending: false);
 
@@ -515,6 +579,20 @@ class OrderService {
       }).toList();
     } catch (e) {
       throw Exception('Failed to get orders for admin: $e');
+    }
+  }
+  // Delete order
+  Future<void> deleteOrder(String orderId) async {
+    try {
+      await _client
+          .from('orders')
+          .delete()
+          .eq('id', orderId);
+          
+      // Clear caches
+      clearCache();
+    } catch (e) {
+      throw Exception('Failed to delete order: $e');
     }
   }
 }

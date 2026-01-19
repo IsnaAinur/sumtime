@@ -27,9 +27,9 @@ class _OrderPageState extends State<OrderPage> {
     _ordersFuture = _fetchOrders();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchOrders() async {
+  Future<List<Map<String, dynamic>>> _fetchOrders({bool forceRefresh = false}) async {
     try {
-      return await _orderService.getOrdersFormatted(isAdmin: true);
+      return await _orderService.getOrdersFormatted(isAdmin: true, forceRefresh: forceRefresh);
     } catch (e) {
       debugPrint('Error fetching orders: $e');
       return [];
@@ -38,7 +38,7 @@ class _OrderPageState extends State<OrderPage> {
 
   void _refreshOrders() {
     setState(() {
-      _ordersFuture = _fetchOrders();
+      _ordersFuture = _fetchOrders(forceRefresh: true);
     });
   }
 
@@ -301,6 +301,9 @@ class _OrderPageState extends State<OrderPage> {
                                     shippingCost: order['shippingCost'] ?? 10000,
                                     orderNumber: orderNumber,
                                     currentStatus: status,
+                                    deliveryAddress: order['deliveryAddress'],
+                                    phone: order['phone'],
+                                    notes: order['notes'],
                                     onUpdateStatus: (newStatus) async {
                                       await _updateOrderStatus(orderId, newStatus);
                                     },
@@ -433,13 +436,13 @@ class _OrderCard extends StatelessWidget {
   String _getStatusText() {
     switch (status) {
       case 0:
-        return 'Terima';
+        return 'PROSES';
       case 1:
-        return 'Proses';
+        return 'KIRIM';
       case 2:
-        return 'Antar';
+        return 'TIBA';
       case 3:
-        return 'Selesai';
+        return 'SELESAI';
       default:
         return 'Unknown';
     }
@@ -510,7 +513,7 @@ class _OrderCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: const Text(
-          '✓ Selesai',
+          '✓ SELESAI',
           style: TextStyle(
             color: Colors.green,
             fontWeight: FontWeight.w600,

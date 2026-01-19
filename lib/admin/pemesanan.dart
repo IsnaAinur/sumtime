@@ -5,6 +5,9 @@ class PemesananPage extends StatefulWidget {
   final int shippingCost;
   final String orderNumber;
   final int currentStatus;
+  final String? deliveryAddress;
+  final String? phone;
+  final String? notes;
   final Future<void> Function(int newStatus)? onUpdateStatus;
 
   const PemesananPage({
@@ -13,6 +16,9 @@ class PemesananPage extends StatefulWidget {
     required this.shippingCost,
     required this.orderNumber,
     required this.currentStatus,
+    this.deliveryAddress,
+    this.phone,
+    this.notes,
     this.onUpdateStatus,
   });
 
@@ -298,9 +304,9 @@ class _PemesananPageState extends State<PemesananPage> {
                                 borderRadius: BorderRadius.circular(8),
                                 color: Colors.grey.shade50,
                               ),
-                              child: const Text(
-                                'Jl. Contoh No. 123, Kelurahan ABC, Kecamatan XYZ, Kota Jakarta',
-                                style: TextStyle(fontSize: 14, color: accentColor),
+                              child: Text(
+                                widget.deliveryAddress ?? 'Alamat tidak tersedia',
+                                style: const TextStyle(fontSize: 14, color: accentColor),
                               ),
                             ),
 
@@ -323,9 +329,9 @@ class _PemesananPageState extends State<PemesananPage> {
                                 borderRadius: BorderRadius.circular(8),
                                 color: Colors.grey.shade50,
                               ),
-                              child: const Text(
-                                '0812-3456-7890',
-                                style: TextStyle(fontSize: 14, color: accentColor),
+                              child: Text(
+                                widget.phone ?? '-',
+                                style: const TextStyle(fontSize: 14, color: accentColor),
                               ),
                             ),
                           ],
@@ -359,15 +365,17 @@ class _PemesananPageState extends State<PemesananPage> {
                     // Catatan
                     const Text('Catatan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: accentColor)),
                     const SizedBox(height: 5),
-                    const TextField(
-                      maxLines: 1,
-                      decoration: InputDecoration(
-                        border: OutlineInputBorder(),
-                        hintText: 'Tambahkan catatan...',
-                        contentPadding: EdgeInsets.all(8.0),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: primaryColor, width: 2),
-                        ),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                        color: Colors.grey.shade50,
+                      ),
+                      child: Text(
+                        widget.notes?.isNotEmpty == true ? widget.notes! : 'Tidak ada catatan',
+                        style: const TextStyle(fontSize: 14, color: accentColor),
                       ),
                     ),
                     const SizedBox(height: 20),

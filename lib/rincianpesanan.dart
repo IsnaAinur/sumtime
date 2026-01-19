@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'beranda.dart';
 
 class RincianPesananPage extends StatefulWidget {
@@ -7,6 +8,9 @@ class RincianPesananPage extends StatefulWidget {
   final String? orderNumber;
   final DateTime? orderDate;
   final int? currentStatus;
+  final String? deliveryAddress;
+  final String? phone;
+  final String? notes;
 
   const RincianPesananPage({
     super.key,
@@ -15,6 +19,9 @@ class RincianPesananPage extends StatefulWidget {
     this.orderNumber,
     this.orderDate,
     this.currentStatus,
+    this.deliveryAddress,
+    this.phone,
+    this.notes,
   });
 
   @override
@@ -28,6 +35,9 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
   late String _orderNumber;
   late DateTime _orderDate;
   int _currentStatus = 1; // 0: Diterima, 1: Dibuatkan, 2: Pengantaran, 3: Selesai
+  
+  // Realtime subscription
+  RealtimeChannel? _subscription;
 
   // Status labels
   final List<String> _statusLabels = [
@@ -59,6 +69,86 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
     _orderNumber = widget.orderNumber ?? 'ORD-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     _orderDate = widget.orderDate ?? DateTime.now();
     _currentStatus = widget.currentStatus ?? 1; // Default status: Pesanan Dibuatkan
+    
+    // Setup realtime listener
+    _setupRealtimeSubscription();
+  }
+  
+  @override
+  void dispose() {
+    // Cancel subscription when leaving the page
+    if (_subscription != null) {
+      Supabase.instance.client.removeChannel(_subscription!);
+    }
+    super.dispose();
+  }
+
+  void _setupRealtimeSubscription() async {
+    try {
+      // Find the order UUID based on orderNumber (order_id in DB) if possible
+      // Or if we don't have UUID, we subscribe to filter by order_id column
+      
+      // Note: In real app we should pass UUID. Assuming orderNumber is unique enough or we query first.
+      // But for this 'rincianpesanan' page, usually we need the DB ID to subscribe efficiently.
+      // If we only have 'ORD-XXX', we query first.
+      
+      final client = Supabase.instance.client;
+      
+      // 1. Get the UUID for this order
+      final response = await client
+          .from('orders')
+          .select('id, status')
+          .eq('order_id', _orderNumber)
+          .maybeSingle();
+
+      if (response != null) {
+        final orderUuid = response['id'];
+        final currentDbStatus = response['status'] as int;
+        
+        // Update status immediately in case it changed since page load
+        if (mounted) {
+           setState(() {
+             _currentStatus = currentDbStatus;
+           });
+        }
+
+        // 2. Subscribe to changes for this specific order UUID
+        _subscription = client
+            .channel('public:orders:id=eq.$orderUuid')
+            .onPostgresChanges(
+              event: PostgresChangeEvent.update,
+              schema: 'public',
+              table: 'orders',
+              filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'id',
+                value: orderUuid,
+              ),
+              callback: (payload) {
+                if (mounted) {
+                  final newStatus = payload.newRecord['status'] as int?;
+                  if (newStatus != null) {
+                    setState(() {
+                      _currentStatus = newStatus;
+                    });
+                    
+                    // Show snackbar notification
+                     ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Status pesanan diperbarui: ${_statusLabels[_currentStatus]}'),
+                        backgroundColor: const Color(0xFFDD0303),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
+                  }
+                }
+              },
+            )
+            .subscribe();
+      }
+    } catch (e) {
+      debugPrint('Error setting up realtime: $e');
+    }
   }
 
   int _calculateSubtotal() {
@@ -176,6 +266,110 @@ class _RincianPesananPageState extends State<RincianPesananPage> {
                       ),
                     ],
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // === INFORMASI PENGIRIMAN ===
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Informasi Pengiriman',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const Divider(height: 24),
+                  
+                  // Alamat
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.location_on, color: Color(0xFFDD0303), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Alamat Pengiriman',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.deliveryAddress ?? '-',
+                              style: const TextStyle(fontSize: 14, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // No HP
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.phone, color: Color(0xFFDD0303), size: 20),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Nomor Telepon',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.phone ?? '-',
+                              style: const TextStyle(fontSize: 14, color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  if (widget.notes?.isNotEmpty == true) ...[
+                    const SizedBox(height: 16),
+                    // Catatan
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.note, color: Color(0xFFDD0303), size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Catatan',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                widget.notes!,
+                                style: const TextStyle(fontSize: 14, color: Colors.black87),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

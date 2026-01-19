@@ -24,9 +24,17 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
     _ordersFuture = _fetchOrders();
   }
 
-  Future<List<Map<String, dynamic>>> _fetchOrders() async {
+  Future<List<Map<String, dynamic>>> _fetchOrders({bool forceRefresh = false}) async {
     try {
-      return await _orderService.getOrdersFormatted();
+      final orders = await _orderService.getOrdersFormatted(forceRefresh: forceRefresh);
+      debugPrint('Fetched ${orders.length} orders');
+      for (var o in orders) {
+        debugPrint('Order ${o['orderId']}: status=${o['status']}');
+        debugPrint(' - Address: ${o['deliveryAddress']}');
+        debugPrint(' - Phone: ${o['phone']}');
+        debugPrint(' - Notes: ${o['notes']}');
+      }
+      return orders;
     } catch (e) {
       debugPrint('Error fetching orders: $e');
       return [];
@@ -35,7 +43,7 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
 
   void _refreshOrders() {
     setState(() {
-      _ordersFuture = _fetchOrders();
+      _ordersFuture = _fetchOrders(forceRefresh: true);
     });
   }
 
@@ -179,6 +187,9 @@ class _HistoryPesananPageState extends State<HistoryPesananPage> {
                                   orderNumber: order['orderId'] ?? 'N/A',
                                   orderDate: orderDate,
                                   currentStatus: order['status'] ?? 0,
+                                  deliveryAddress: order['deliveryAddress'],
+                                  phone: order['phone'],
+                                  notes: order['notes'],
                                 ),
                               ),
                             );
