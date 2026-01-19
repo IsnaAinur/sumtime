@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,46 +37,87 @@ class _ProfilePageState extends State<ProfilePage> {
     _loadProfileData();
   }
 
-  // Load data lebih singkat
+  // Load data dari Supabase & SharedPreferences
   Future<void> _loadProfileData() async {
-    final prefs = await SharedPreferences.getInstance();
-    setState(() {
-      _usernameController.text = prefs.getString('username') ?? 'Nama Pengguna';
-      _emailController.text = prefs.getString('email') ?? 'user@gmail.com';
-      _passwordController.text = prefs.getString('password') ?? '••••••••';
+    try {
+      final authService = AuthService();
+      final user = authService.getCurrentUser();
       
-      final path = prefs.getString('image_path');
-      if (path != null && File(path).existsSync()) {
-        _profileImage = File(path);
+      // Get Username from Supabase users table
+      String username = 'Nama Pengguna';
+      final profile = await authService.getUserProfile();
+      if (profile != null && profile['username'] != null) {
+        username = profile['username'];
       }
-    });
+      
+      // Get Email from Auth User
+      String email = user?.email ?? 'user@gmail.com';
+
+      // Load Image Path from SharedPreferences (Persist Local Path)
+      final prefs = await SharedPreferences.getInstance();
+      final imagePath = prefs.getString('profile_image_path_${user?.id}');
+
+      // Set State
+      if (mounted) {
+        setState(() {
+          _usernameController.text = username;
+          _emailController.text = email;
+          _passwordController.text = '••••••••';
+          
+          if (imagePath != null && File(imagePath).existsSync()) {
+            _profileImage = File(imagePath);
+          } else if (kIsWeb) {
+            final base64Image = prefs.getString('profile_image_base64_${user?.id}');
+            if (base64Image != null) {
+              _profileImageBytes = base64Decode(base64Image);
+            }
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading profile: $e');
+    }
   }
 
-  // Simpan data text
+  // Simpan data ke Supabase
   Future<void> _saveProfileData() async {
-    if (_usernameController.text.isEmpty || !_emailController.text.contains('@')) {
+    if (_usernameController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Data tidak valid!'), backgroundColor: _primaryColor),
+        SnackBar(content: Text('Username tidak boleh kosong!'), backgroundColor: _primaryColor),
       );
       return;
     }
 
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('username', _usernameController.text);
-    await prefs.setString('email', _emailController.text);
-    // Simpan password asli jika diubah, jangan simpan dots
-    if (_passwordController.text != '••••••••') {
-      await prefs.setString('password', _passwordController.text);
-    }
+    try {
+      final authService = AuthService();
+      
+      // 1. Update Username
+      await authService.updateProfile(username: _usernameController.text);
+      
+      // 2. Update Password if changed
+      if (_passwordController.text != '••••••••' && _passwordController.text.isNotEmpty) {
+        if (_passwordController.text.length < 6) {
+           ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Password minimal 6 karakter!'), backgroundColor: _primaryColor),
+          );
+          return;
+        }
+        await authService.updatePassword(_passwordController.text);
+      }
 
-    setState(() {
-      _isEditMode = false;
-      if (_passwordController.text.isNotEmpty) _passwordController.text = '••••••••';
-    });
+      setState(() {
+        _isEditMode = false;
+        if (_passwordController.text.isNotEmpty) _passwordController.text = '••••••••';
+      });
 
-    if (mounted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profil berhasil disimpan'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Profil berhasil disimpan'), backgroundColor: Colors.green),
+        SnackBar(content: Text('Gagal menyimpan profil: $e'), backgroundColor: _primaryColor),
       );
     }
   }
@@ -96,8 +138,11 @@ class _ProfilePageState extends State<ProfilePage> {
           
           // Simpan bytes ke SharedPreferences (base64)
           final prefs = await SharedPreferences.getInstance();
-          // Untuk web, kita simpan sebagai base64 string
-          // Tapi untuk kesederhanaan, kita hanya set flag bahwa ada gambar
+          // Simpan base64 string
+          final authService = AuthService();
+          final user = authService.getCurrentUser();
+          final base64Image = base64Encode(bytes);
+          await prefs.setString('profile_image_base64_${user?.id}', base64Image);
           await prefs.setBool('has_profile_image', true);
         } else {
           // Untuk mobile, simpan sebagai File
@@ -110,9 +155,11 @@ class _ProfilePageState extends State<ProfilePage> {
             _profileImageBytes = null;
           });
           
-          // Simpan Path ke Prefs
+          // Save path consistently
+          final authService = AuthService();
+          final user = authService.getCurrentUser();
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('image_path', savedImage.path);
+          await prefs.setString('profile_image_path_${user?.id}', savedImage.path);
         }
         
         if (!mounted) return;

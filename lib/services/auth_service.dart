@@ -65,6 +65,35 @@ class AuthService {
   }
 
   // ======================
+  // UPDATE PASSWORD
+  // ======================
+  Future<UserResponse> updatePassword(String newPassword) async {
+    return await _client.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
+
+  // ======================
+  // UPDATE PROFILE (Username)
+  // ======================
+  Future<void> updateProfile({String? username}) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('User not authenticated');
+
+    if (username != null) {
+      await _client
+          .from('users')
+          .update({'username': username})
+          .eq('id', user.id);
+      
+      // Update metadata as well
+      await _client.auth.updateUser(
+        UserAttributes(data: {'username': username}),
+      );
+    }
+  }
+
+  // ======================
   // CURRENT USER
   // ======================
   User? getCurrentUser() {
