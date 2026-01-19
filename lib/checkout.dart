@@ -284,10 +284,13 @@ class _CheckoutPageState extends State<CheckoutPage> {
                               final String price =
                                   (product['price'] ?? '-').toString();
 
+                              final String? image = product['image'];
+
                               return _buildOrderItem(
                                 itemName: entry.key,
                                 price: price,
                                 quantity: qty,
+                                imageUrl: image,
                               );
                             },
                           ),
@@ -487,6 +490,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required String itemName,
     required String price,
     required int quantity,
+    String? imageUrl,
   }) {
     return Row(
       children: [
@@ -495,11 +499,22 @@ class _CheckoutPageState extends State<CheckoutPage> {
           width: 60,
           height: 60,
           decoration: BoxDecoration(
-            color: Colors.grey[300], // Warna abu-abu sebagai placeholder gambar
+            color: Colors.grey[300], // Warna abu-abu sebagai placeholder
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: Colors.grey.shade400),
           ),
-          child: const Icon(Icons.image, color: Colors.grey), // Ikon sementara
+          child: imageUrl != null && imageUrl.isNotEmpty
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.broken_image, color: Colors.grey);
+                    },
+                  ),
+                )
+              : const Icon(Icons.image, color: Colors.grey),
         ),
         const SizedBox(width: 15),
 
@@ -521,38 +536,14 @@ class _CheckoutPageState extends State<CheckoutPage> {
           ),
         ),
 
-        // Row untuk kontrol kuantitas (- 1 +) (di kanan)
-        Row(
-          children: [
-            // Tombol Kurang (-)
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(Icons.remove, size: 18),
-            ),
-            // Angka Kuantitas
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12.0),
-              child: Text(
-                quantity.toString(),
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
-            // Tombol Tambah (+)
-            Container(
-              width: 30,
-              height: 30,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Icon(Icons.add, size: 18),
-            ),
-          ],
+        // Tampilan Kuantitas Statis (x 2)
+        Text(
+          'x $quantity',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFFDD0303),
+          ),
         ),
       ],
     );
